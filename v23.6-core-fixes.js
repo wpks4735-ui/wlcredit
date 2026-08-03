@@ -46,7 +46,7 @@ function patchProfile(){
 function ensureToday(){
  const nav=$('#adminSidebar nav');if(!nav)return null;
  let btn=$('#navTodayWork');if(!btn){btn=document.createElement('button');btn.id='navTodayWork';btn.dataset.section='todayWork';btn.className='nav-single';btn.innerHTML=`<span>${T('今日工作','Today Work','Kerja Hari Ini')}</span><span id="navTodayWorkBadge" class="nav-count hidden">0</span>`;nav.insertBefore(btn,nav.firstElementChild)}
- let sec=$('#todayWork');if(!sec){sec=document.createElement('section');sec.id='todayWork';sec.className='section';$('main.main')?.prepend(sec)}
+ let sec=$('#todayWork');if(!sec){sec=document.createElement('section');sec.id='todayWork';sec.className='section';$('main.main > header.topbar')?.insertAdjacentElement('afterend',sec)}
  return sec;
 }
 function table(title,headers,rows,empty){return `<section class="v236-work-block"><h3>${title}</h3><div class="table-wrap"><table class="table"><thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows||`<tr><td colspan="${headers.length}" class="muted">${empty}</td></tr>`}</tbody></table></div></section>`}
@@ -62,7 +62,7 @@ function renderToday(){
  if(r==='finance'){
   count=disb.length+receipts.length+advances.length;
   html+=table(T('待放款','Pending Disbursement','Menunggu Pengeluaran'),[T('申请编号','Application','Permohonan'),T('客户','Customer','Pelanggan'),T('金额','Amount','Jumlah'),T('操作','Action','Tindakan')],disb.map(a=>`<tr><td>${esc(a.application_code||a.loan_id||'-')}</td><td>${esc(a.full_name||a.customers?.full_name||'-')}</td><td>${money(a.approved_principal||a.requested_amount)}</td><td><button class="btn btn-secondary" data-v236-goto="pendingFinance">${T('处理','Process','Proses')}</button></td></tr>`).join(''), '');
-  html+=table(T('待收款','Pending Receipts','Menunggu Penerimaan'),[T('客户','Customer','Pelanggan'),T('贷款编号','Loan ID','ID Pinjaman'),T('金额','Amount','Jumlah'),T('操作','Action','Tindakan')],receipts.map(x=>{const l=(s.loans||[]).find(v=>String(v.id)===String(x.loan_id))||x.loans||{},c=customer(l);return `<tr><td>${esc(username(c))} · ${esc(c.full_name||'-')}</td><td>${esc(loanCode(l))}</td><td>${money(x.amount)}</td><td><button class="btn btn-secondary" data-v236-goto="paymentSubmissions">${T('处理','Process','Proses')}</button></td></tr>`}).join(''), '');
+  html+=table(T('待收款','Pending Receipts','Menunggu Penerimaan'),[T('客户','Customer','Pelanggan'),T('贷款编号','Loan ID','ID Pinjaman'),T('金额','Amount','Jumlah'),T('操作','Action','Tindakan')],receipts.map(x=>{const l=(s.loans||[]).find(v=>String(v.id)===String(x.loan_id))||x.loans||{},c=customer(l);return `<tr><td>${esc(username(c))} · ${esc(c.full_name||'-')}</td><td>${esc(loanCode(l))}</td><td>${money(x.amount)}</td><td><button class="btn btn-secondary" data-v236-goto="financeReceipts">${T('处理','Process','Proses')}</button></td></tr>`}).join(''), '');
   html+=table(T('预支工资','Salary Advances','Pendahuluan Gaji'),[T('员工','Employee','Pekerja'),T('金额','Amount','Jumlah'),T('原因','Reason','Sebab'),T('操作','Action','Tindakan')],advances.map(x=>`<tr><td>${esc(x.employees?.full_name||x.employee_name||'-')}</td><td>${money(x.amount)}</td><td>${esc(x.reason||'-')}</td><td><button class="btn btn-secondary" data-v236-goto="companyManagement" data-v236-tab="advancesPanel">${T('处理','Process','Proses')}</button></td></tr>`).join(''), '');
  } else {
   count=due.length+overdue.length;
