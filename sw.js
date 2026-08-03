@@ -1,4 +1,4 @@
-const CACHE='wl-credit-v16-3-initial-data-sync-20260803';
+const CACHE='wl-credit-v16-4-initial-data-sync-20260803';
 self.addEventListener('install',event=>self.skipWaiting());
 self.addEventListener('activate',event=>event.waitUntil((async()=>{for(const k of await caches.keys())await caches.delete(k);await self.clients.claim();})()));
 self.addEventListener('fetch',event=>{

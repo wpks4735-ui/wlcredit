@@ -832,6 +832,21 @@ function v17OwnerFilters(){
 window.v17SetOwnerFilter=id=>{state.customerOwnerFilter=id;renderCustomers()};
 
 const v17OriginalRenderCustomers=renderCustomers;
+function customerStatusLabel(active){
+  if(SWK_LANG.current==='zh')return active?'启用':'停用';
+  if(SWK_LANG.current==='ms')return active?'Aktif':'Dinyahaktifkan';
+  return active?'Enabled':'Disabled';
+}
+function customerActionLabel(key){
+  const labels={
+    view:{en:'View',zh:'查看',ms:'Lihat'},
+    edit:{en:'Edit',zh:'编辑',ms:'Sunting'},
+    password:{en:'Password',zh:'修改密码',ms:'Kata Laluan'},
+    enable:{en:'Enable',zh:'启用',ms:'Aktifkan'},
+    disable:{en:'Disable',zh:'停用',ms:'Nyahaktifkan'}
+  };
+  return labels[key]?.[SWK_LANG.current]||labels[key]?.en||key;
+}
 renderCustomers=function(){
   const section=$('#customers');
   if(section){
@@ -839,7 +854,7 @@ renderCustomers=function(){
     if(!host){host=document.createElement('div');host.id='customerOwnerFilters';host.className='customer-owner-filter-wrap';section.insertBefore(host,section.querySelector('.section-head'));}
     host.innerHTML=v17OwnerFilters();
   }
-  const q=($('#customerSearch')?.value||'').toLowerCase();
+  const q=($('#customerSearch')?.value||'').trim().toLowerCase();
   const filtered=(state.customers||[]).filter(c=>{
     const match=[c.customer_code,c.full_name,c.phone,c.id_number].join(' ').toLowerCase().includes(q);
     if(!match)return false;
@@ -848,11 +863,38 @@ renderCustomers=function(){
     return String(c.owner_staff_id)===String(state.customerOwnerFilter);
   });
   $('#customerRows').innerHTML=filtered.map(c=>{
-    const ls=state.loans.filter(l=>l.customer_id===c.id),a=ls.filter(l=>l.status==='active').length,h=ls.filter(l=>l.status==='paid').length;
-    const owner=v17StaffLabel(c.owner_staff_id);
+    const activeLoans=(state.loans||[]).filter(l=>String(l.customer_id)===String(c.id)&&l.status==='active').length;
     const transfer=isSuperAdmin()?`<button class="btn btn-secondary" onclick="v17TransferCustomer('${c.id}')">${SWK_LANG.current==='zh'?'转接客服':SWK_LANG.current==='ms'?'Pindah Staf':'Transfer'}</button>`:'';
-    return `<tr><td><span class="click-link" onclick="openCustomerProfile('${c.id}')">${esc(c.customer_code)}</span></td><td><span class="click-link" onclick="openCustomerProfile('${c.id}')">${esc(c.full_name)}</span><small class="mobile-row-note">${esc(owner)}</small></td><td>${esc(c.phone)}</td><td>${esc(c.id_number)}</td><td>${a}</td><td>${h}</td><td><span class="badge ${c.is_active?'ok':'danger'}">${c.is_active?'Active':'Inactive'}</span></td><td class="actions"><span class="owner-chip">${esc(owner)}</span><button class="btn btn-secondary" onclick="openCustomer('${c.id}')">${esc(v11t('edit'))}</button>${transfer}<button class="btn btn-secondary" onclick="changePin('${c.id}')">Password</button></td></tr>`
-  }).join('');
+    const toggleKey=c.is_active===false?'enable':'disable';
+    return `<tr>
+      <td><strong class="customer-username click-link" onclick="openCustomerProfile('${c.id}')">${esc(c.customer_code||'-')}</strong></td>
+      <td><span class="click-link" onclick="openCustomerProfile('${c.id}')">${esc(c.full_name||'-')}</span></td>
+      <td>${esc(c.phone||'-')}</td>
+      <td>${esc(c.id_number||'-')}</td>
+      <td><span class="active-loan-count">${activeLoans}</span></td>
+      <td><span class="badge ${c.is_active===false?'danger':'ok'}">${customerStatusLabel(c.is_active!==false)}</span></td>
+      <td class="actions">
+        <button class="btn btn-secondary" onclick="openCustomerProfile('${c.id}')">${customerActionLabel('view')}</button>
+        <button class="btn btn-secondary" onclick="openCustomer('${c.id}')">${customerActionLabel('edit')}</button>
+        <button class="btn btn-secondary" onclick="changePin('${c.id}')">${customerActionLabel('password')}</button>
+        <button class="btn ${c.is_active===false?'btn-primary':'btn-danger'}" onclick="toggleCustomerStatus('${c.id}',${c.is_active===false?'true':'false'})">${customerActionLabel(toggleKey)}</button>
+        ${transfer}
+      </td>
+    </tr>`;
+  }).join('')||`<tr><td colspan="7" class="muted">${tr('noRecords')}</td></tr>`;
+};
+window.toggleCustomerStatus=async(id,enabled)=>{
+  if(!requirePerm('customers_edit'))return;
+  const c=(state.customers||[]).find(x=>String(x.id)===String(id));
+  if(!c)return;
+  const verb=enabled?(SWK_LANG.current==='zh'?'启用':SWK_LANG.current==='ms'?'aktifkan':'enable'):(SWK_LANG.current==='zh'?'停用':SWK_LANG.current==='ms'?'nyahaktifkan':'disable');
+  const question=SWK_LANG.current==='zh'?`确定要${verb}用户 ${c.customer_code} 吗？`:SWK_LANG.current==='ms'?`Sahkan untuk ${verb} pengguna ${c.customer_code}?`:`Are you sure you want to ${verb} user ${c.customer_code}?`;
+  if(!confirm(question))return;
+  const {error}=await sb.from('customers').update({is_active:enabled,updated_at:new Date().toISOString()}).eq('id',id);
+  if(error)return toast(error.message,true);
+  c.is_active=enabled;
+  renderCustomers();
+  toast(SWK_LANG.current==='zh'?'状态已更新':SWK_LANG.current==='ms'?'Status dikemas kini':'Status updated');
 };
 
 window.v17TransferCustomer=id=>{

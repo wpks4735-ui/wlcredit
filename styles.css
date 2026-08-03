@@ -480,3 +480,10 @@ body.staff-authenticated{background:var(--erp-bg)}
 .v51-popover button.danger:hover{background:#fff0f1;color:#b5232c}
 #v51SoundMenu{min-width:150px}
 @media(max-width:900px){.v51-profile-name{display:none}.v51-profile-btn>span:last-child{display:none}}
+
+/* V16.4 customer account table */
+#customers .customer-username{font-weight:800;letter-spacing:.04em;color:#0f4c81}
+#customers .active-loan-count{display:inline-flex;min-width:34px;height:30px;align-items:center;justify-content:center;border-radius:10px;background:#eef5ff;color:#0f4c81;font-weight:800}
+#customers td.actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+#customers td.actions .btn{padding:8px 12px;white-space:nowrap}
+@media(max-width:900px){#customers td.actions{min-width:260px}}

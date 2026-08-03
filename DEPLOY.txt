@@ -6,3 +6,10 @@ WL Credit V50 LTS Clean
 4. Close old WL Credit tabs, reopen /admin, and press Ctrl+F5 once.
 
 This package consolidates the deployed extension scripts into extensions.js and removes old migration/patch files from the deploy package. Existing Supabase data and schema are unchanged.
+
+
+V16.4 CUSTOMER USERNAME UPDATE
+1. Run V16.4-CUSTOMER-USERNAME-WL001.sql in Supabase SQL Editor first.
+2. Existing customer login usernames will change to WL001, WL002, WL003...
+3. Upload all project files to GitHub and wait for Cloudflare deployment.
+4. Customers must use the new WL username to log in; passwords are unchanged.
