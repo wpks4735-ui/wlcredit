@@ -100,6 +100,25 @@ async function rejectPaymentDirect(id,reason,stage='finance_receipt'){
   }
   if(result.error)throw result.error;
 
+  // Update every in-memory state copy immediately so Today Work, header counts and
+  // finance lists stop showing the rejected payment without requiring a refresh.
+  const stamp=new Date().toISOString();
+  const patchLocalState=root=>{
+    if(!root)return;
+    for(const key of ['submissions','payment_submissions']){
+      const rows=root[key];
+      if(!Array.isArray(rows))continue;
+      const row=rows.find(x=>String(x.id)===String(id));
+      if(row)Object.assign(row,{
+        status:next,finance_status:financeStatus,rejection_stage:stage,
+        rejected_from_status:previous,rejection_reason:clean,rejected_by:uid,
+        rejected_at:stamp,updated_at:stamp
+      });
+    }
+  };
+  patchLocalState(window.__wlState);
+  patchLocalState(window.state);
+
   // Best-effort audit log; rejection itself must not fail if the log table is absent.
   try{
     await sb.from('workflow_rejection_logs').insert({
@@ -114,6 +133,11 @@ async function rejectPaymentDirect(id,reason,stage='finance_receipt'){
   await window.loadFinance?.();
   window.renderAll?.();
   window.renderAllFinance?.();
+  document.dispatchEvent(new CustomEvent('wl:data-loaded',{detail:{source:'payment-rejected',id}}));
+  // Re-open/re-render Today Work if it is the active section.
+  if(document.querySelector('#todayWork.section.active,#todayWork.active')){
+    window.renderTodayWorkV233?.();
+  }
   queueShellNormalize();
 }
 

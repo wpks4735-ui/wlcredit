@@ -1,4 +1,4 @@
-const CACHE='wl-credit-v23-4-today-due-date-fix';
+const CACHE='wl-credit-v23.8';
 self.addEventListener('install',event=>self.skipWaiting());
 self.addEventListener('activate',event=>event.waitUntil((async()=>{for(const k of await caches.keys())await caches.delete(k);await self.clients.claim();})()));
 self.addEventListener('fetch',event=>{

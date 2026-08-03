@@ -56,7 +56,13 @@ function renderToday(){
  const due=loans.filter(l=>myDateKey(loanDue(l))===today);
  const overdue=loans.filter(l=>Number(l.overdue_charge||l.overdue_amount||0)>0 || (myDateKey(loanDue(l))&&myDateKey(loanDue(l))<today));
  const disb=apps.filter(a=>['pending_disbursement','waiting_finance','awaiting_finance','pending_finance'].includes(norm(a.status)));
- const receipts=subs.filter(x=>['pending','submitted','pending_finance','awaiting_finance','waiting_finance_receive'].includes(norm(x.finance_status||x.status)));
+ const receipts=subs.filter(x=>{
+  const fs=norm(x.finance_status),st=norm(x.status);
+  const terminal=['rejected','cancelled','failed','completed','approved','received','finance_confirmed','awaiting_staff','staff_processing'];
+  if(terminal.includes(fs)||terminal.includes(st))return false;
+  const pending=['pending','submitted','pending_finance','awaiting_finance','waiting_finance_receive','finance_pending'];
+  return pending.includes(fs)||pending.includes(st);
+ });
  const advances=adv.filter(x=>['requested','pending','submitted'].includes(norm(x.status)));
  let html=`<div class="card v236-today-card"><h2>${T('今日工作','Today Work','Kerja Hari Ini')}</h2>`;let count=0;
  if(r==='finance'){
