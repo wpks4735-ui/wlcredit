@@ -93,7 +93,7 @@
           </div>
         </div>
         <div class="v51-tool-menu-wrap">
-          <button id="v51ProfileBtn" class="v51-profile-btn" type="button"><span class="v51-profile">${esc((S().staff?.username||S().staff?.full_name||'A').slice(0,1).toUpperCase())}</span><span class="v51-profile-name">${esc(S().staff?.username||S().staff?.full_name||'admin')}</span><span>⌄</span></button>
+          <button id="v51ProfileBtn" class="v51-profile-btn" type="button"><span class="v51-profile">${esc((S().staff?.full_name||S().staff?.username||'A').slice(0,1).toUpperCase())}</span><span class="v51-profile-name">${esc(S().staff?.full_name||S().staff?.username||'admin')}</span><span>⌄</span></button>
           <div id="v51ProfileMenu" class="v51-popover v51-profile-menu hidden">
             <button type="button" id="v51ChangePassword">🔐 <span>${t('修改密码','Change Password','Tukar Kata Laluan')}</span></button>
             <button type="button" id="v51Logout" class="danger">↪ <span>${t('退出登录','Logout','Log Keluar')}</span></button>
@@ -318,7 +318,8 @@
   }
   document.addEventListener('wl:data-loaded',()=>{renderAll();startInitialDataSync()});
   window.addEventListener('pageshow',()=>{renderAll();startInitialDataSync()});
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(initStructure,100));else setTimeout(initStructure,100);
+  window.renderV51Stats=renderStats;window.renderV51Staff=renderStaff;window.renderV51All=renderAll;
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(initStructure,100));else setTimeout(initStructure,100);
 })();
 
 /* ===== V21.1 compact one-row header interaction hardening ===== */

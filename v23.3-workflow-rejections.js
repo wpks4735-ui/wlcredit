@@ -120,8 +120,12 @@ function renderTodayWork(){
  const count=(finance||superA?disb.length+receipts.length+advances.length:0)+(!finance||superA?due.length+overdue.length:0),b=$('#navTodayWorkBadge');if(b){b.textContent=count;b.classList.toggle('hidden',!count)}
 }
 
+
+window.renderTodayWorkV233=renderTodayWork;
+document.addEventListener('wl:data-loaded',()=>setTimeout(()=>{renderTodayWork();patchProfileName()},0));
+
 function patchProfileName(){
- const name=S().staff?.full_name||S().staff?.display_name||S().staff?.username||'admin';
+ const st=S().staff||{};const live=(S().staffList||[]).find(x=>String(x.user_id||x.id)===String(st.user_id||st.id));const name=live?.full_name||st.full_name||st.display_name||st.username||'admin';
  const n=$('.v51-profile-name');if(n)n.textContent=name;
  const a=$('.v51-profile');if(a)a.textContent=String(name).slice(0,1).toUpperCase();
 }
@@ -140,5 +144,5 @@ const oldSwitch=window.switchSection;
 window.switchSection=function(id){const r=oldSwitch?.apply(this,arguments);if(id==='todayWork')setTimeout(renderTodayWork,20);return r};
 setInterval(()=>{patchApplicationRows();patchFinanceRows();patchPendingFinanceRows();patchAdvanceRows();patchProfileName()},2500);
 window.addEventListener('swk-language-applied',()=>setTimeout(()=>{renderTodayWork();patchApplicationRows();patchFinanceRows();patchPendingFinanceRows();patchAdvanceRows();patchProfileName()},30));
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(()=>{renderTodayWork();patchProfileName()},700));else setTimeout(()=>{renderTodayWork();patchProfileName()},700);
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(()=>{ensureTodayWork();renderTodayWork();patchProfileName()},0));else setTimeout(()=>{ensureTodayWork();renderTodayWork();patchProfileName()},0);
 })();

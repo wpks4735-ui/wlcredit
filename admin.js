@@ -102,6 +102,8 @@ function applyV11Labels(){applyV12NavLabels();document.querySelectorAll('[data-v
 function companyStatus(v){return v11t(v)||v}
 function applyV10Labels(){document.querySelectorAll('[data-v10]').forEach(el=>{el.textContent=v10t(el.dataset.v10)});}
 const state={staff:null,applications:[],applicationFilter:'pending',customers:[],loans:[],repayments:[],banks:[],contacts:[],staffList:[],submissions:[],documents:[],audit:[],settings:null,filter:'all',notificationsReady:false,knownPendingIds:new Set(),knownApplicationIds:new Set(),knownAdvanceRequestIds:new Set(),employees:[],payroll:[],expenses:[],companyIncome:[],attendance:[],salaryAdvances:[],paymentChannel:null,applicationChannel:null,advanceChannel:null,notificationPoll:null,audioContext:null,soundEnabled:localStorage.getItem('wl_notification_sound')==='1',dateFrom:null,dateTo:null,datePreset:'today'};
+// Stable shared state for dashboard/extensions loaded as separate classic scripts.
+window.__wlState=state; window.state=state;
 // Shared live state for separately loaded workflow modules (loan review, finance, dashboard).
 window.state=state;
 window.__wlState=state;
@@ -160,7 +162,7 @@ async function loadAll(){
  const loadNames=['loan_applications','customers','loans','repayments','receiving_banks','contact_channels','staff_profiles','payment_submissions','customer_documents','audit_logs','employees','payroll_records','company_expenses','company_income','attendance_records','salary_advances','app_settings','telegram_settings'];
  const loadErrors=[];
  qs.forEach((q,i)=>{if(q?.error){console.error('WL Credit load failed:',loadNames[i],q.error);loadErrors.push(`${loadNames[i]}: ${q.error.message||q.error.code||'load failed'}`)}});
- [state.applications,state.customers,state.loans,state.repayments,state.banks,state.contacts,state.staffList,state.submissions,state.documents,state.audit,state.employees,state.payroll,state.expenses,state.companyIncome,state.attendance,state.salaryAdvances]=qs.slice(0,16).map(x=>x?.error?[]:(x?.data||[]));state.settings=qs[16]?.error?null:qs[16]?.data;state.telegramSettings=qs[17]?.error?null:(qs[17]?.data||null);state.loadErrors=loadErrors;
+ [state.applications,state.customers,state.loans,state.repayments,state.banks,state.contacts,state.staffList,state.submissions,state.documents,state.audit,state.employees,state.payroll,state.expenses,state.companyIncome,state.attendance,state.salaryAdvances]=qs.slice(0,16).map(x=>x?.error?[]:(x?.data||[]));state.settings=qs[16]?.error?null:qs[16]?.data;state.telegramSettings=qs[17]?.error?null:(qs[17]?.data||null);state.loadErrors=loadErrors;window.__wlState=state;window.state=state;
  if(!canSeeAllCustomers()){
   state.applications=state.applications.filter(applicationVisible);
   state.customers=state.customers.filter(isMine);
