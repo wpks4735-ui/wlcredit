@@ -519,3 +519,34 @@ body.sidebar-collapsed .sidebar{width:0;min-width:0;padding-left:0!important;pad
   #mobileMenuBtn{display:flex!important}
   .modal{padding-top:70px!important}
 }
+
+/* ===== V20 stable application shell ===== */
+html,body{min-height:100%;margin:0;overflow-x:hidden}
+#adminApp.app{display:flex!important;align-items:stretch;width:100%;min-height:100vh;grid-template-columns:none!important;background:#f4f8fd}
+#adminApp.app.hidden{display:none!important}
+#adminSidebar.sidebar{position:sticky!important;top:0!important;left:auto!important;bottom:auto!important;flex:0 0 270px;width:270px!important;min-width:270px!important;height:100vh;max-height:100vh;padding:0!important;overflow-x:hidden!important;overflow-y:auto!important;transform:none!important;transition:flex-basis .24s ease,width .24s ease,min-width .24s ease,opacity .18s ease!important;z-index:90!important}
+#adminSidebar .brand{padding:0 26px!important;white-space:nowrap}
+#adminSidebar .nav{padding:18px 14px 32px!important}
+#adminApp .main{display:block!important;flex:1 1 auto;min-width:0;width:auto!important;padding:26px!important;overflow:visible!important;transition:padding .24s ease}
+body.sidebar-collapsed #adminSidebar.sidebar{flex-basis:0!important;width:0!important;min-width:0!important;opacity:0;border:0!important;box-shadow:none!important}
+body.sidebar-collapsed #adminSidebar .brand,body.sidebar-collapsed #adminSidebar .nav{visibility:hidden}
+#adminApp .topbar.v51-topbar{position:sticky!important;top:0!important;left:auto!important;right:auto!important;width:auto!important;min-height:76px;z-index:600!important;margin:0 0 24px!important;padding:10px 16px!important;box-sizing:border-box;grid-template-columns:48px minmax(150px,220px) minmax(0,1fr)!important}
+#adminApp #mobileMenuBtn{display:flex!important;align-items:center;justify-content:center;position:static!important;width:42px!important;height:42px!important;margin:0!important;padding:0!important}
+#adminApp .section{scroll-margin-top:100px}
+#adminApp .modal{position:fixed!important;inset:0!important;z-index:5000!important;padding:24px!important;align-items:center!important;justify-content:center!important;overflow:auto!important}
+#adminApp .modal-card{z-index:5001!important;max-height:calc(100vh - 48px)!important;margin:auto!important;overflow:auto!important}
+#adminApp .v51-popover{z-index:3000!important}
+#adminApp .sidebar-overlay{z-index:3900!important}
+@media(min-width:901px){#adminApp .sidebar-overlay{display:none!important}}
+@media(max-width:900px){
+ #adminApp.app{display:block!important}
+ #adminApp #adminSidebar.sidebar{position:fixed!important;inset:0 auto 0 0!important;width:min(84vw,310px)!important;min-width:0!important;height:100vh!important;max-height:100vh!important;transform:translateX(-105%)!important;opacity:1!important;z-index:4000!important;box-shadow:18px 0 44px rgba(4,20,38,.3)!important}
+ #adminApp #adminSidebar.sidebar.open{transform:translateX(0)!important}
+ body.sidebar-collapsed #adminSidebar.sidebar{width:min(84vw,310px)!important;transform:translateX(-105%)!important}
+ #adminApp .main{width:100%!important;padding:12px!important}
+ #adminApp .topbar.v51-topbar{grid-template-columns:48px minmax(0,1fr)!important;top:0!important;z-index:600!important}
+ #adminApp .modal{padding:12px!important;z-index:5000!important}
+ #adminApp .modal-card{max-height:calc(100vh - 24px)!important}
+ #adminApp .sidebar-overlay{display:block!important;position:fixed!important;inset:0!important;background:rgba(4,20,38,.55)!important;opacity:0;visibility:hidden;pointer-events:none;transition:.2s ease}
+ #adminApp .sidebar-overlay.show{opacity:1;visibility:visible;pointer-events:auto}
+}

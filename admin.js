@@ -16,11 +16,14 @@ function normalizeCustomerUsername(value){
  return raw;
 }
 function customerUsername(customer){
- const username=String(customer?.username||'').trim();
- const code=String(customer?.customer_code||'').trim();
- // Some legacy rows accidentally stored a Loan ID in username. Prefer the
- // customer code whenever username looks like L00001/SWKL000001.
- const selected=/^(?:SWKL|L)\d+$/i.test(username)&&code?code:(username||code);
+ const candidates=[customer?.username,customer?.portal_username,customer?.login_username,customer?.customer_code]
+  .map(v=>String(v||'').trim()).filter(Boolean);
+ let selected=candidates.find(v=>! /^(?:SWKL|L)\d+$/i.test(v))||candidates[0]||'';
+ // Legacy rows sometimes stored a loan number in every public customer field.
+ // For customer identity only, recover the same numeric suffix as WLxxx.
+ if(/^(?:SWKL|L)\d+$/i.test(selected)){
+  const m=selected.match(/(\d+)$/);selected=m?'WL'+String(Number(m[1])).padStart(3,'0'):selected;
+ }
  return normalizeCustomerUsername(selected);
 }
 function canonicalLoanId(value){
