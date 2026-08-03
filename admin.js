@@ -1043,14 +1043,7 @@ renderAll=function(){v17OriginalRenderAll();v17RenderStaffDashboard();};
 })();
 
 
-// V29 admin inactivity protection: sign out after 5 minutes without interaction.
-(function setupAdminIdleLogout(){
- const LIMIT=5*60*1000;let timer=null;
- const reset=()=>{clearTimeout(timer);if(!document.getElementById('adminApp')?.classList.contains('hidden'))timer=setTimeout(async()=>{try{await sb.auth.signOut()}finally{location.reload()}},LIMIT)};
- ['click','keydown','mousemove','touchstart','scroll'].forEach(evt=>document.addEventListener(evt,reset,{passive:true}));
- document.addEventListener('visibilitychange',()=>{if(!document.hidden)reset()});
- reset();
-})();
+// Automatic inactivity logout removed in V23.6. Staff remain signed in until manual logout.
 
 
 

@@ -644,3 +644,10 @@ body.sidebar-collapsed #adminSidebar>*{visibility:hidden!important}
 #modal{z-index:99999!important}.modal-card{position:relative;z-index:100000}
 .today-work-grid{display:grid;gap:22px}.v231-today-work h3{margin:8px 0 12px}
 @media(min-width:1200px){.today-work-grid{grid-template-columns:1fr 1fr}}
+/* V23.6 stable Today Work layout */
+#todayWork .v236-today-card{overflow:visible}
+#todayWork .v236-work-block{display:block;width:100%;margin-top:26px;overflow:visible}
+#todayWork .v236-work-block+.v236-work-block{margin-top:34px}
+#todayWork .table-wrap{width:100%;max-width:100%;overflow-x:auto}
+#todayWork .table{min-width:760px;width:100%}
+#todayWork{overflow:visible}

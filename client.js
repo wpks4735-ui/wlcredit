@@ -69,15 +69,15 @@ function closePaymentPage(){
  $('#paymentPage').classList.add('hidden');$('#loansPage').classList.remove('hidden');window.scrollTo({top:0,behavior:'smooth'});
 }
 let portalRealtime=null;function startPortalRealtime(){try{if(portalRealtime)sb.removeChannel(portalRealtime);portalRealtime=sb.channel('customer-loan-live-'+Date.now()).on('postgres_changes',{event:'*',schema:'public',table:'loans'},async()=>{try{data=await fetchPortal();if(data)render()}catch(_){}}).subscribe()}catch(_){}}
-function showPortal(){$('#loginView').classList.add('hidden');$('#forcePasswordView').classList.add('hidden');$('#portalView').classList.remove('hidden');render();startPortalRealtime();resetIdle();clearInterval(refreshTimer);refreshTimer=null}
+function showPortal(){$('#loginView').classList.add('hidden');$('#forcePasswordView').classList.add('hidden');$('#portalView').classList.remove('hidden');render();startPortalRealtime();clearInterval(refreshTimer);refreshTimer=null}
 function showForce(){$('#loginView').classList.add('hidden');$('#portalView').classList.add('hidden');$('#forcePasswordView').classList.remove('hidden')}
 async function clearSession(server=true){clearInterval(refreshTimer);clearTimeout(idleTimer);clearInterval(warningTimer);if(server&&token)try{await sb.rpc('customer_logout',{p_session_token:token})}catch{}token='';data=null;localStorage.removeItem('swk_customer_session');$('#portalView').classList.add('hidden');$('#forcePasswordView').classList.add('hidden');$('#loginView').classList.remove('hidden')}
-function resetIdle(){lastActivity=Date.now();clearTimeout(idleTimer);$('#idleWarning').classList.remove('show');if(token)idleTimer=setTimeout(()=>{let n=WARN;$('#idleCountdown').textContent=n;$('#idleWarning').classList.add('show');warningTimer=setInterval(()=>{n--;$('#idleCountdown').textContent=n;if(n<=0){clearInterval(warningTimer);clearSession(true)}},1000)},IDLE-WARN*1000)}
+function resetIdle(){lastActivity=Date.now();clearTimeout(idleTimer);clearInterval(warningTimer);$('#idleWarning')?.classList.remove('show')} // V23.6: no automatic logout
 document.addEventListener('DOMContentLoaded',async()=>{
  SWK_LANG.init();window.addEventListener('swk-language-applied',()=>{if(data)render()});
  sb=supabase.createClient(cfg.SUPABASE_URL,cfg.SUPABASE_ANON_KEY,{auth:{persistSession:false}});$('#paymentDate').value=today();
  $$('.client-tab').forEach(b=>b.onclick=()=>{$$('.client-tab').forEach(x=>x.className='btn btn-secondary client-tab');b.className='btn btn-primary client-tab active';tab=b.dataset.tab;render()});
- ['click','keydown','touchstart'].forEach(ev=>document.addEventListener(ev,()=>{if(token&&Date.now()-lastActivity>1000)resetIdle()},{passive:true}));
+ // V23.6: inactivity listeners removed; session ends only via manual logout.
  $('#continueSession').onclick=resetIdle;$('#idleLogout').onclick=()=>clearSession(true);$('#backToLoans').onclick=closePaymentPage;
  $('#clientLogin').onsubmit=async e=>{e.preventDefault();const x=await sb.rpc('customer_portal_login',{p_code:$('#customerCode').value.trim(),p_pin:$('#customerPin').value});if(x.error||!x.data?.ok)return toast(tr('loginError'),true);token=x.data.session_token;localStorage.setItem('swk_customer_session',token);data=x.data;data.must_change_pin?showForce():showPortal()};
  $('#forcePasswordForm').onsubmit=async e=>{e.preventDefault();if($('#newClientPin').value!==$('#confirmClientPin').value)return toast(tr('passwordMismatchShort'),true);const x=await sb.rpc('customer_change_pin_session',{p_session_token:token,p_new_pin:$('#newClientPin').value});if(x.error)return toast(x.error.message,true);data=await fetchPortal();showPortal()};
