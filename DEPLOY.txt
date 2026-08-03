@@ -1,10 +1,6 @@
-WL Credit V18 Unified Public IDs
+WL Credit V21.0 Stable UI Shell
 
-1. Run V18-UNIFIED-PUBLIC-IDS.sql in Supabase SQL Editor.
-2. Upload all project files to GitHub/Cloudflare Pages.
-3. Wait for deployment, then close all old tabs and reopen the site.
-4. Customer Username / Customer ID display: WL001, WL002, ...
-5. Loan ID display: L00001, L00002, ...
-6. Global search supports Username, Loan ID, customer name, IC and phone.
-
-The database UUIDs remain internal. Legacy customer_code/loan_id values are retained for compatibility but are never shown as public IDs.
+1. Upload all files to the GitHub repository root.
+2. No SQL is required.
+3. Wait for Cloudflare Pages deployment.
+4. Close old admin tabs and reopen /admin.
