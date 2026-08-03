@@ -204,13 +204,25 @@
   }
 
   function navigateStatus(type){
-    const r=role();let section='dashboard';
-    if(type==='payment')section=r==='finance'?'finance':'staffPaymentAllocation';
-    if(type==='disbursement')section=r==='finance'?'finance':'pendingFinance';
-    if(type==='review')section='loanApplications';
-    if(type==='salary')section='companyManagement';
-    const btn=$(`[data-section="${section}"]`);if(btn)btn.click();
-    if(type==='salary')setTimeout(()=>{$('[data-company-tab="advancesPanel"]')?.click()},100);
+    const r=role();
+    const candidates={
+      payment:r==='finance'?['paymentSubmissions']:['staffPaymentAllocation','paymentSubmissions'],
+      disbursement:['pendingFinance'],
+      review:['loanReview','loanApplications'],
+      salary:r==='finance'||r==='super_admin'?['companyManagement']:['myHr']
+    }[type]||['dashboard'];
+    const section=candidates.find(id=>document.getElementById(id));
+    if(!section)return;
+    const btn=$(`#nav button[data-section="${section}"]`);
+    if(btn){btn.click()}else{
+      $$('#nav button[data-section],.section').forEach(x=>x.classList.remove('active'));
+      document.getElementById(section)?.classList.add('active');
+      localStorage.setItem('wl_active_section',section);
+    }
+    if(type==='payment'&&r==='finance'){
+      setTimeout(()=>{state.filter='pending';renderSubmissions?.()},80);
+    }
+    if(type==='salary'&&section==='companyManagement')setTimeout(()=>{$('[data-company-tab="advancesPanel"]')?.click()},100);
   }
   function renderCounts(){
     const s=S(),r=role(),me=uid(),apps=s.applications||[],subs=s.submissions||[],loans=s.loans||[],advs=s.salaryAdvances||[],pay=s.payroll||[];

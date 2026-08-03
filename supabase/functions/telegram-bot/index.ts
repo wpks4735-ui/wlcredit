@@ -7,6 +7,19 @@ const money=(v:number)=>`MYR ${Number(v||0).toLocaleString("en-MY",{minimumFract
 const malaysiaDate=()=>new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Kuala_Lumpur",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());
 const malaysiaTime=()=>new Intl.DateTimeFormat("en-GB",{timeZone:"Asia/Kuala_Lumpur",hour:"2-digit",minute:"2-digit",hour12:false}).format(new Date());
 
+const canonicalUsername=(v:unknown)=>{
+  const raw=text(v).toUpperCase();
+  const wl=raw.match(/^WL0*(\d+)$/);
+  if(wl) return `WL${String(Number(wl[1])).padStart(3,"0")}`;
+  const legacy=raw.match(/(?:SWKC|CUS|CUSTOMER|C|L)?0*(\d+)$/);
+  return legacy?`WL${String(Number(legacy[1])).padStart(3,"0")}`:(raw||"-");
+};
+const canonicalLoanId=(v:unknown)=>{
+  const raw=text(v).toUpperCase();
+  const n=raw.match(/(\d+)$/)?.[1];
+  return n?`L${String(Number(n)).padStart(5,"0")}`:(raw||"-");
+};
+
 async function sendTelegram(token:string,chatId:string,message:string){
   if(!token||!chatId) throw new Error("Telegram Bot Token or Chat ID is missing.");
   const r=await fetch(`https://api.telegram.org/bot${token}/sendMessage`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({chat_id:chatId,text:message,disable_web_page_preview:true})});
@@ -53,13 +66,15 @@ Deno.serve(async(req)=>{
     if(action==="payment_submission"){
       if(settings.is_enabled!==true) return reply({ok:true,skipped:true});
       const loanId=text(body.loan_id),amount=Number(body.amount||0);
-      const {data:l}=await admin.from("loans").select("id,loan_id,customers(full_name,phone,owner_staff_id)").eq("id",loanId).maybeSingle();
-      const ownerId=(l as any)?.customers?.owner_staff_id;
+      const {data:l}=await admin.from("loans").select("id,loan_id,customers(username,customer_code,full_name,phone,owner_staff_id)").eq("id",loanId).maybeSingle();
+      const customerRow=(l as any)?.customers;
+      const ownerId=customerRow?.owner_staff_id;
       const {data:owner}=ownerId?await admin.from("staff_profiles").select("full_name,username").eq("user_id",ownerId).maybeSingle():{data:null};
-      const displayLoan=l?.loan_id||loanId||"-";
-      const customer=(l as any)?.customers?.full_name||"-";
+      const displayLoan=canonicalLoanId(l?.loan_id||loanId);
+      const displayUsername=canonicalUsername(customerRow?.username||customerRow?.customer_code);
+      const customer=customerRow?.full_name||"-";
       const staffName=(owner as any)?.full_name||(owner as any)?.username||"Unassigned";
-      const msg=`💳 Customer Submitted Payment\n\nLoan ID: ${displayLoan}\nCustomer: ${customer}\nAssigned Staff: ${staffName}\nAmount: ${money(amount)}`;
+      const msg=`💳 Customer Submitted Payment\n\nUsername: ${displayUsername}\nLoan ID: ${displayLoan}\nCustomer: ${customer}\nAssigned Staff: ${staffName}\nAmount: ${money(amount)}`;
       await sendTelegram(settings.bot_token,settings.notification_chat_id,msg);
       return reply({ok:true});
     }
