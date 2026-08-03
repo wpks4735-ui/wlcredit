@@ -83,10 +83,26 @@ function renderTodayWork(){
  ensureTodayWork();const sec=$('#todayWork');if(!sec)return;
  const apps=S().applications||[],subs=S().submissions||[],adv=S().salaryAdvances||[],loans=S().loans||[],customers=S().customers||[];
  const finance=role()==='finance',superA=role()==='super_admin';
- const today=new Date().toISOString().slice(0,10);
+ const dateKey=value=>{
+  if(!value)return '';
+  const raw=String(value).trim();
+  const match=raw.match(/^(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})/);
+  if(match)return `${match[1]}-${String(match[2]).padStart(2,'0')}-${String(match[3]).padStart(2,'0')}`;
+  const parsed=new Date(value);
+  if(Number.isNaN(parsed.getTime()))return '';
+  const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Kuala_Lumpur',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(parsed);
+  const part=type=>parts.find(x=>x.type===type)?.value||'';
+  return `${part('year')}-${part('month')}-${part('day')}`;
+ };
+ const today=(()=>{
+  const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Kuala_Lumpur',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
+  const part=type=>parts.find(x=>x.type===type)?.value||'';
+  return `${part('year')}-${part('month')}-${part('day')}`;
+ })();
+ const isRunning=l=>['active','in_progress','ongoing'].includes(String(l.status||'').toLowerCase());
  const customerFor=l=>customers.find(c=>String(c.id)===String(l.customer_id))||{};
- const due=loans.filter(l=>l.status==='active'&&String(l.due_date||'').slice(0,10)===today);
- const overdue=loans.filter(l=>l.status==='active'&&(Number(l.overdue_charge||0)>0||String(l.due_date||'').slice(0,10)<today));
+ const due=loans.filter(l=>isRunning(l)&&dateKey(l.due_date)===today);
+ const overdue=loans.filter(l=>isRunning(l)&&(Number(l.overdue_charge||0)>0||(dateKey(l.due_date)&&dateKey(l.due_date)<today)));
  const disb=apps.filter(a=>a.status==='pending_disbursement');
  const receipts=subs.filter(x=>['pending','submitted','pending_finance','awaiting_finance','waiting_finance_receive'].includes(String(x.finance_status||x.status||'').toLowerCase()));
  const advances=adv.filter(x=>['requested','pending'].includes(String(x.status||'').toLowerCase()));
