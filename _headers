@@ -1,0 +1,18 @@
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+
+/index.html
+  Cache-Control: no-store, no-cache, must-revalidate
+/admin.html
+  Cache-Control: no-store, no-cache, must-revalidate
+/admin/*
+  Cache-Control: no-store, no-cache, must-revalidate
+/*.js
+  Cache-Control: no-store, no-cache, must-revalidate
+/*.css
+  Cache-Control: no-store, no-cache, must-revalidate
+/manifest.webmanifest
+  Cache-Control: no-store, no-cache, must-revalidate
+/assets/*
+  Cache-Control: no-cache

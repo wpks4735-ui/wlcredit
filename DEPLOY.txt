@@ -1,0 +1,8 @@
+WL Credit V50 LTS Clean
+
+1. Upload every file/folder in this package to the GitHub repository root.
+2. No database migration is included or required by this cleanup package.
+3. Wait for Cloudflare Pages deployment to finish.
+4. Close old WL Credit tabs, reopen /admin, and press Ctrl+F5 once.
+
+This package consolidates the deployed extension scripts into extensions.js and removes old migration/patch files from the deploy package. Existing Supabase data and schema are unchanged.

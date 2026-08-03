@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 320" role="img" aria-labelledby="title desc">
+  <title id="title">WL Credit</title>
+  <desc id="desc">WL monogram inside a professional shield</desc>
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0d3158"/>
+      <stop offset="1" stop-color="#1f5f9d"/>
+    </linearGradient>
+  </defs>
+  <path d="M160 18 282 66v87c0 72-43 124-122 149C81 277 38 225 38 153V66z" fill="url(#g)"/>
+  <path d="M73 96h35l24 105 28-105h30l28 105 24-105h35l-40 143h-36l-26-91-26 91h-36z" fill="#fff"/>
+  <path d="M203 96h31v114h58v29h-89z" fill="#d8b35b"/>
+</svg>
