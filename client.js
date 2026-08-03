@@ -13,7 +13,7 @@ function contactsHtml(){const ct=data?.contacts||{},rows=[];if(ct.telegram)rows.
 window.copyBankAccount=async value=>{try{await navigator.clipboard.writeText(value);toast(tr('copySuccess'))}catch{const ta=document.createElement('textarea');ta.value=value;document.body.appendChild(ta);ta.select();try{document.execCommand('copy');toast(tr('copySuccess'))}catch{toast(tr('copyFailed'),true)}ta.remove()}}
 function render(){
  if(!data)return;
- $('#clientName').textContent=data.customer.full_name;$('#clientCodeDisplay').textContent=data.customer.customer_code;
+ $('#clientName').textContent=data.customer.full_name;$('#clientCodeDisplay').textContent=(data.customer.username||data.customer.customer_code);
  const all=data.loans||[],active=all.filter(x=>x.status==='active'),hist=all.filter(x=>x.status==='paid'),shown=tab==='active'?active:tab==='history'?hist:all;
  const historyOnly=tab==='history';
  ['announcementSection','contactSection','paymentSubmissionsSection'].forEach(id=>{const el=$('#'+id);if(el)el.classList.toggle('hidden',historyOnly)});

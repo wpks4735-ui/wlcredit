@@ -1,3 +1,5 @@
+// Canonical customer login identity used by all extension modules.
+function wlCustomerUsername(customer){return String(customer?.username||customer?.customer_code||'').trim().toUpperCase()}
 /* WL Credit V50 LTS consolidated extensions. Generated from the deployed V43.2 script order. */
 
 /* ===== v18-reports.js ===== */
@@ -815,7 +817,7 @@ window.v33ShowAssignedCustomers=(bankId,staffId)=>{
  const legacy=b?legacyBankFor(b):null;
  const staffLabel=v17StaffLabel?.(staffId)||staffId;
  const customers=legacy?(state.customers||[]).filter(c=>String(c.assigned_bank_id)===String(legacy.id)&&String(c.owner_staff_id||'')===String(staffId)):[];
- const rows=customers.map(c=>`<tr><td>${E(c.customer_code||c.customer_id||c.id||'-')}</td><td>${E(c.full_name||'-')}</td><td>${E(c.phone||c.mobile||'-')}</td></tr>`).join('')||`<tr><td colspan="3">${L('暂无客户','No customers','Tiada pelanggan')}</td></tr>`;
+ const rows=customers.map(c=>`<tr><td>${E(wlCustomerUsername(c)||c.customer_id||c.id||'-')}</td><td>${E(c.full_name||'-')}</td><td>${E(c.phone||c.mobile||'-')}</td></tr>`).join('')||`<tr><td colspan="3">${L('暂无客户','No customers','Tiada pelanggan')}</td></tr>`;
  modal(`<h2>${E(staffLabel)}（${customers.length}）</h2><p class="muted">${E(b?.bank_name||'')} · ${E(b?.account_number||'')}</p><div class="table-wrap"><table class="table"><thead><tr><th>${L('客户编号','Customer ID','ID Pelanggan')}</th><th>${L('客户','Customer','Pelanggan')}</th><th>${L('电话','Phone','Telefon')}</th></tr></thead><tbody>${rows}</tbody></table></div>`);
 };
 function renderBanks(){
@@ -1257,7 +1259,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     const term=String(q||'').trim().toLowerCase();
     return (state.customers||[]).filter(c=>{
       if(!term)return true;
-      return [c.customer_code,c.full_name,c.phone,c.id_number].some(v=>String(v||'').toLowerCase().includes(term));
+      return [wlCustomerUsername(c),c.full_name,c.phone,c.id_number].some(v=>String(v||'').toLowerCase().includes(term));
     }).slice(0,50);
   }
 
@@ -1297,7 +1299,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
       <p><button id="v337ManualAssign" class="btn btn-secondary" type="button">${L('指定到此银行','Assign to this bank','Tetapkan ke bank ini')}</button> <button id="v337ManualRemove" class="btn btn-danger" type="button">${L('取消客户银行分配','Remove customer bank assignment','Batalkan agihan bank pelanggan')}</button></p>`);
 
     const search=document.querySelector('#v337CustomerSearch'),select=document.querySelector('#v337CustomerSelect');
-    const fill=()=>{const list=customerOptions(search.value);select.innerHTML=list.map(c=>{const a=(state.bankCustomerAssignments||[]).find(x=>String(x.customer_id)===String(c.id));const b=(state.banks||[]).find(x=>String(x.id)===String(a?.bank_id||c.assigned_bank_id));return `<option value="${c.id}">${safe(c.customer_code)} · ${safe(c.full_name)}${b?` · ${safe(b.bank_name)}`:''}</option>`}).join('')||`<option value="">${L('没有找到客户','No customer found','Pelanggan tidak ditemui')}</option>`};
+    const fill=()=>{const list=customerOptions(search.value);select.innerHTML=list.map(c=>{const a=(state.bankCustomerAssignments||[]).find(x=>String(x.customer_id)===String(c.id));const b=(state.banks||[]).find(x=>String(x.id)===String(a?.bank_id||c.assigned_bank_id));return `<option value="${c.id}">${safe(wlCustomerUsername(c))} · ${safe(c.full_name)}${b?` · ${safe(b.bank_name)}`:''}</option>`}).join('')||`<option value="">${L('没有找到客户','No customer found','Pelanggan tidak ditemui')}</option>`};
     search.oninput=fill;fill();
 
     document.querySelector('#v337CapacityForm').onsubmit=async e=>{
@@ -2175,7 +2177,7 @@ setTimeout(()=>{window.renderLoanReview?.();renderFinanceApplications();renderPe
    const c=(window.state?.customers||[]).find(x=>String(x.id)===String(customerId))||(window.state?.customers||[]).find(x=>x.is_active);
    if(!c)return window.toast?.(L('请先选择客户','Please select a customer','Sila pilih pelanggan'),true);
    window.modal?.(`<h2>${L('新增贷款（待财务出款）','New Loan (Pending Finance)','Pinjaman Baharu (Menunggu Kewangan)')}</h2>
-   <div class="card" style="margin-bottom:14px"><strong>${esc(c.customer_code||'')} · ${esc(c.full_name||'')}</strong><br><small>${L('此贷款不会立即生效；财务完成转账后才建立正式贷款。','This loan activates only after Finance completes the transfer.','Pinjaman hanya aktif selepas Kewangan selesai memindah.')}</small></div>
+   <div class="card" style="margin-bottom:14px"><strong>${esc(wlCustomerUsername(c))} · ${esc(c.full_name||'')}</strong><br><small>${L('此贷款不会立即生效；财务完成转账后才建立正式贷款。','This loan activates only after Finance completes the transfer.','Pinjaman hanya aktif selepas Kewangan selesai memindah.')}</small></div>
    <form id="v415ExistingLoanForm"><div class="grid2">
     <div class="field"><label>${L('本金','Principal','Prinsipal')}</label><input name="principal" type="number" min="0.01" step="0.01" required></div>
     <div class="field"><label>${L('利息','Interest','Faedah')}</label><input name="interest" type="number" min="0" step="0.01" required></div>
