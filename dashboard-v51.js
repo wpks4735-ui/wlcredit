@@ -42,8 +42,8 @@
     const legacy=document.createElement('div');legacy.id='v51LegacyDashboard';legacy.hidden=true;
     while(dash.firstChild)legacy.appendChild(dash.firstChild);
     dash.appendChild(legacy);
+    $('#v41RoleOverview')?.remove();$('#v39RoleOverview')?.remove();
     dash.insertAdjacentHTML('afterbegin',`<div id="v51Dashboard">
-      <div class="v51-page-head"><div><span class="v51-eyebrow">WL CREDIT</span><h2>${t('统计资讯','Statistics','Maklumat Statistik')}</h2><p>${t('公司营运与客服业绩概览','Company operations and staff performance overview','Gambaran operasi syarikat dan prestasi staf')}</p></div></div>
       <section class="v51-panel">
         <div class="v51-panel-head"><div><h3>${t('统计资讯','Statistics','Maklumat Statistik')}</h3><small>${t('此日期只影响本区统计','This date range only affects these statistics','Julat tarikh ini hanya mempengaruhi statistik ini')}</small></div></div>
         <div class="v51-filter" id="v51StatsFilter">
@@ -80,8 +80,20 @@
       </div>
       <div class="v51-header-tools">
         <div class="v51-language"><button id="v51Globe" title="Language">🌐</button><select id="v51Lang"><option value="zh">简体中文</option><option value="en">English</option><option value="ms">Bahasa Melayu</option></select></div>
-        <button id="v51Sound" class="v51-round-tool" type="button" title="Sound">🔊</button>
-        <div class="v51-profile"><span>${esc((S().staff?.username||S().staff?.full_name||'A').slice(0,1).toUpperCase())}</span></div>
+        <div class="v51-tool-menu-wrap">
+          <button id="v51Sound" class="v51-round-tool" type="button" title="Sound">🔊</button>
+          <div id="v51SoundMenu" class="v51-popover hidden">
+            <button type="button" data-v51-sound="on">🔊 <span>${t('有声音','Sound On','Bunyi Aktif')}</span></button>
+            <button type="button" data-v51-sound="off">🔇 <span>${t('无声音','Sound Off','Tiada Bunyi')}</span></button>
+          </div>
+        </div>
+        <div class="v51-tool-menu-wrap">
+          <button id="v51ProfileBtn" class="v51-profile-btn" type="button"><span class="v51-profile">${esc((S().staff?.username||S().staff?.full_name||'A').slice(0,1).toUpperCase())}</span><span class="v51-profile-name">${esc(S().staff?.username||S().staff?.full_name||'admin')}</span><span>⌄</span></button>
+          <div id="v51ProfileMenu" class="v51-popover v51-profile-menu hidden">
+            <button type="button" id="v51ChangePassword">🔐 <span>${t('修改密码','Change Password','Tukar Kata Laluan')}</span></button>
+            <button type="button" id="v51Logout" class="danger">↪ <span>${t('退出登录','Logout','Log Keluar')}</span></button>
+          </div>
+        </div>
       </div>
     </div>`);
     $('#v51Lang').value=lang();
@@ -97,11 +109,46 @@
     $('#v51StatsApply').onclick=renderStats;$('#v51StaffApply').onclick=renderStaff;
     $('#v51ExportCsv').onclick=()=>exportReport('csv');$('#v51ExportExcel').onclick=()=>exportReport('xls');
     $('#v51Globe').onclick=()=>$('#v51Lang').focus();
-    $('#v51Sound').onclick=()=>{const old=$('#enableSoundBtn');if(old)old.click();const on=localStorage.getItem('wl_notification_sound')!=='off';$('#v51Sound').textContent=on?'🔊':'🔇'};
+    const soundOn=()=>localStorage.getItem('wl_notification_sound')!=='0'&&localStorage.getItem('wl_notification_sound')!=='off';
+    const refreshSoundIcon=()=>{$('#v51Sound').textContent=soundOn()?'🔊':'🔇'};
+    refreshSoundIcon();
+    $('#v51Sound').onclick=e=>{e.stopPropagation();$('#v51ProfileMenu')?.classList.add('hidden');$('#v51SoundMenu')?.classList.toggle('hidden')};
+    $$('[data-v51-sound]').forEach(btn=>btn.onclick=async e=>{e.stopPropagation();const desired=btn.dataset.v51Sound==='on';const current=soundOn();if(desired!==current){const old=$('#enableSoundBtn');if(old)old.click();else{localStorage.setItem('wl_notification_sound',desired?'1':'0');if(S())S().soundEnabled=desired}}refreshSoundIcon();$('#v51SoundMenu')?.classList.add('hidden')});
+    $('#v51ProfileBtn').onclick=e=>{e.stopPropagation();$('#v51SoundMenu')?.classList.add('hidden');$('#v51ProfileMenu')?.classList.toggle('hidden')};
+    $('#v51ChangePassword').onclick=()=>{$('#v51ProfileMenu')?.classList.add('hidden');openPasswordChange()};
+    $('#v51Logout').onclick=()=>{$('#staffLogout')?.click()};
+    document.addEventListener('click',()=>{$('#v51SoundMenu')?.classList.add('hidden');$('#v51ProfileMenu')?.classList.add('hidden')});
     $('#v51Lang').onchange=e=>{const old=$('.lang-select');if(old){old.value=e.target.value;old.dispatchEvent(new Event('change',{bubbles:true}))}else{localStorage.setItem('wl_lang',e.target.value);location.reload()}};
     document.addEventListener('wl:data-loaded',renderAll);
     setInterval(()=>{if($('#dashboard')?.classList.contains('active'))renderAll()},10000);
   }
+
+  function openPasswordChange(){
+    const title=t('修改密码','Change Password','Tukar Kata Laluan');
+    const currentLabel=t('当前密码','Current Password','Kata Laluan Semasa');
+    const newLabel=t('新密码','New Password','Kata Laluan Baharu');
+    const confirmLabel=t('确认新密码','Confirm New Password','Sahkan Kata Laluan Baharu');
+    const saveLabel=t('保存新密码','Save New Password','Simpan Kata Laluan Baharu');
+    if(typeof window.modal!=='function')return;
+    window.modal(`<h2>${title}</h2><form id="v51PasswordForm"><div class="field"><label>${currentLabel}</label><input name="current" type="password" autocomplete="current-password" required minlength="8"></div><div class="field"><label>${newLabel}</label><input name="next" type="password" autocomplete="new-password" required minlength="8"></div><div class="field"><label>${confirmLabel}</label><input name="confirm" type="password" autocomplete="new-password" required minlength="8"></div><button class="btn btn-primary" type="submit">${saveLabel}</button></form>`);
+    $('#v51PasswordForm').onsubmit=async e=>{
+      e.preventDefault();
+      const fd=new FormData(e.currentTarget),current=String(fd.get('current')||''),next=String(fd.get('next')||''),confirm=String(fd.get('confirm')||'');
+      if(next!==confirm)return window.toast?.(t('两次输入的新密码不一致','New passwords do not match','Kata laluan baharu tidak sepadan'),true);
+      if(next===current)return window.toast?.(t('新密码不能与当前密码相同','New password must differ from the current password','Kata laluan baharu mesti berbeza'),true);
+      try{
+        const {data:{user}}=await window.sb.auth.getUser();
+        if(!user?.email)throw new Error(t('无法取得登录账号','Unable to retrieve login account','Tidak dapat mendapatkan akaun log masuk'));
+        const verify=await window.sb.auth.signInWithPassword({email:user.email,password:current});
+        if(verify.error)throw new Error(t('当前密码不正确','Current password is incorrect','Kata laluan semasa tidak betul'));
+        const updated=await window.sb.auth.updateUser({password:next});
+        if(updated.error)throw updated.error;
+        document.querySelector('#modal')?.classList.remove('show');
+        window.toast?.(t('密码修改成功','Password changed successfully','Kata laluan berjaya ditukar'));
+      }catch(err){window.toast?.(err?.message||String(err),true)}
+    };
+  }
+
   function navigateStatus(type){
     const r=role();let section='dashboard';
     if(type==='payment')section=r==='finance'?'finance':'staffPaymentAllocation';
