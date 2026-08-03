@@ -1,1 +1,2 @@
-WL Credit V22.0 Unified Language Authority
+WL Credit V23 Enterprise
+Customer username WL001 + clickable active loans + overdue charge management
