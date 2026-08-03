@@ -591,3 +591,42 @@ body.staff-authenticated #adminApp.app{
   body.staff-authenticated #adminApp.app{display:block!important}
   #adminApp>.main{width:100%!important}
 }
+
+/* ===== V21.1 compact single-row header ===== */
+#adminApp .topbar.v51-topbar,#adminApp .topbar{
+  min-height:58px!important;height:58px!important;padding:0 14px!important;
+  display:flex!important;align-items:center!important;gap:10px!important;flex-wrap:nowrap!important;
+  overflow:visible!important;
+}
+#adminApp .topbar .v211-hide-header-title{display:none!important}
+#adminApp #mobileMenuBtn{width:36px!important;height:36px!important;min-width:36px!important;border-radius:7px!important;font-size:18px!important}
+#adminApp #v51StatusBar.v211-compact-status,#adminApp #v51StatusBar{
+  flex:1!important;display:flex!important;align-items:center!important;justify-content:space-between!important;
+  min-width:0!important;height:58px!important;gap:8px!important;
+}
+#adminApp .v51-status-cluster{display:flex!important;align-items:center!important;height:58px!important;gap:0!important;min-width:0!important}
+#adminApp .v51-status-item{height:42px!important;min-width:118px!important;padding:0 14px!important;gap:7px!important;font-size:14px!important;border-radius:0!important}
+#adminApp .v51-status-item .v51-status-icon{font-size:22px!important}
+#adminApp .v51-status-item b{width:24px!important;height:24px!important;min-width:24px!important;font-size:12px!important}
+#adminApp .v51-mini-bell{font-size:14px!important}
+#adminApp .v51-header-tools{display:flex!important;align-items:center!important;gap:6px!important;flex:none!important}
+#adminApp .v51-header-tools>*,#adminApp .v51-round-tool,#adminApp #v51Globe{flex:none!important}
+#adminApp .v51-round-tool,#adminApp #v51Globe{width:36px!important;height:36px!important;min-width:36px!important;font-size:17px!important}
+#adminApp .v51-profile-btn{height:38px!important;padding:0 8px!important;gap:7px!important}
+#adminApp .v51-profile{width:30px!important;height:30px!important;font-size:14px!important}
+#adminApp .v51-profile-name{font-size:14px!important}
+#adminApp .v51-popover{z-index:100000!important;top:calc(100% + 7px)!important}
+#adminApp .v51-language-menu{min-width:190px!important;height:auto!important;max-height:none!important;overflow:visible!important}
+#adminApp .v51-language-menu button,#adminApp #v51SoundMenu button,#adminApp #v51ProfileMenu button{display:flex!important;color:#17324f!important;background:#fff!important;opacity:1!important;visibility:visible!important}
+body.sidebar-collapsed #adminSidebar{transform:none!important;overflow:hidden!important;padding-left:0!important;padding-right:0!important;border:0!important}
+body.sidebar-collapsed #adminSidebar>*{visibility:hidden!important}
+@media(max-width:1100px){
+  #adminApp .v51-status-item{min-width:94px!important;padding:0 9px!important}
+  #adminApp .v51-profile-name{display:none!important}
+}
+@media(max-width:900px){
+  #adminApp .topbar.v51-topbar,#adminApp .topbar{height:auto!important;min-height:56px!important;padding:8px 10px!important;overflow-x:auto!important}
+  #adminApp #v51StatusBar{height:40px!important;min-width:690px!important}
+  #adminApp .v51-status-cluster{height:40px!important}
+  #adminApp .v51-status-item{height:38px!important;min-width:100px!important}
+}

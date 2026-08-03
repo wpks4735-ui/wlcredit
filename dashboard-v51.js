@@ -308,3 +308,89 @@
   window.addEventListener('pageshow',()=>{renderAll();startInitialDataSync()});
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(initStructure,100));else setTimeout(initStructure,100);
 })();
+
+/* ===== V21.1 compact one-row header interaction hardening ===== */
+(function(){
+  'use strict';
+  const q=(s,r=document)=>r.querySelector(s);
+  const qa=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  const lang=()=>window.SWK_LANG?.current||localStorage.getItem('wl_lang')||'zh';
+  const tr=(zh,en,ms)=>lang()==='zh'?zh:lang()==='ms'?ms:en;
+  const closeMenus=()=>{
+    q('#v51LanguageMenu')?.classList.add('hidden');
+    q('#v51SoundMenu')?.classList.add('hidden');
+    q('#v51ProfileMenu')?.classList.add('hidden');
+  };
+  function setSound(on){
+    localStorage.setItem('wl_notification_sound',on?'1':'0');
+    if(window.state)window.state.soundEnabled=on;
+    const legacy=q('#enableSoundBtn');
+    if(legacy){
+      const legacyOn=window.state?.soundEnabled===true;
+      if(legacyOn!==on) legacy.click();
+    }
+    const btn=q('#v51Sound'); if(btn)btn.textContent=on?'🔊':'🔇';
+  }
+  function soundOn(){return localStorage.getItem('wl_notification_sound')==='1'}
+  function updateLanguageChecks(){
+    qa('[data-v51-lang]').forEach(btn=>{
+      const active=btn.dataset.v51Lang===lang();
+      btn.classList.toggle('active',active);
+      const check=btn.querySelector('.v51-lang-check');if(check)check.textContent=active?'✓':'';
+    });
+  }
+  function toggleSidebar(){
+    const mobile=matchMedia('(max-width:900px)').matches;
+    const sidebar=q('#adminSidebar'), overlay=q('#sidebarOverlay'), btn=q('#mobileMenuBtn');
+    if(!sidebar)return;
+    if(mobile){
+      const open=!sidebar.classList.contains('open');
+      sidebar.classList.toggle('open',open);overlay?.classList.toggle('show',open);
+      document.body.classList.toggle('sidebar-open',open);btn?.setAttribute('aria-expanded',String(open));
+    }else{
+      const collapsed=!document.body.classList.contains('sidebar-collapsed');
+      document.body.classList.toggle('sidebar-collapsed',collapsed);
+      localStorage.setItem('wl_sidebar_collapsed',collapsed?'1':'0');
+      btn?.setAttribute('aria-expanded',String(!collapsed));
+    }
+  }
+  async function openPassword(){
+    if(typeof window.modal!=='function')return;
+    window.modal(`<h2>${tr('修改密码','Change Password','Tukar Kata Laluan')}</h2><form id="v211PasswordForm"><div class="field"><label>${tr('当前密码','Current Password','Kata Laluan Semasa')}</label><input name="current" type="password" required minlength="8"></div><div class="field"><label>${tr('新密码','New Password','Kata Laluan Baharu')}</label><input name="next" type="password" required minlength="8"></div><div class="field"><label>${tr('确认新密码','Confirm New Password','Sahkan Kata Laluan Baharu')}</label><input name="confirm" type="password" required minlength="8"></div><button class="btn btn-primary">${tr('确认修改','Update Password','Kemas Kini Kata Laluan')}</button></form>`);
+    const form=q('#v211PasswordForm');if(!form)return;
+    form.onsubmit=async e=>{
+      e.preventDefault();const f=new FormData(form),current=String(f.get('current')||''),next=String(f.get('next')||''),confirm=String(f.get('confirm')||'');
+      if(next!==confirm)return window.toast?.(tr('两次新密码不一致','New passwords do not match','Kata laluan baharu tidak sepadan'),true);
+      try{
+        const userRes=await window.sb.auth.getUser();const email=userRes?.data?.user?.email;
+        if(!email)throw new Error(tr('无法取得登录账号','Unable to retrieve login account','Tidak dapat mendapatkan akaun log masuk'));
+        const verify=await window.sb.auth.signInWithPassword({email,password:current});if(verify.error)throw new Error(tr('当前密码不正确','Current password is incorrect','Kata laluan semasa tidak betul'));
+        const up=await window.sb.auth.updateUser({password:next});if(up.error)throw up.error;
+        q('#modal')?.classList.remove('show');window.toast?.(tr('密码修改成功','Password updated','Kata laluan dikemas kini'));
+      }catch(err){window.toast?.(err?.message||String(err),true)}
+    };
+  }
+  function compactHeader(){
+    q('#pageTitle')?.parentElement?.classList.add('v211-hide-header-title');
+    const status=q('#v51StatusBar');if(status)status.classList.add('v211-compact-status');
+    const btn=q('#mobileMenuBtn');if(btn){btn.textContent='☰';btn.title=tr('收合选单','Toggle menu','Tukar menu')}
+    const sound=q('#v51Sound');if(sound)sound.textContent=soundOn()?'🔊':'🔇';
+    updateLanguageChecks();
+  }
+  document.addEventListener('click',e=>{
+    const target=e.target;
+    if(target.closest('#mobileMenuBtn')){e.preventDefault();e.stopImmediatePropagation();toggleSidebar();return}
+    if(target.closest('#v51Globe')){e.preventDefault();e.stopImmediatePropagation();const m=q('#v51LanguageMenu');const show=m?.classList.contains('hidden');closeMenus();if(show)m?.classList.remove('hidden');updateLanguageChecks();return}
+    const lb=target.closest('[data-v51-lang]');if(lb){e.preventDefault();e.stopImmediatePropagation();const value=lb.dataset.v51Lang;localStorage.setItem('wl_lang',value);const legacy=q('.lang-select');if(legacy){legacy.value=value;legacy.dispatchEvent(new Event('change',{bubbles:true}))}else location.reload();closeMenus();return}
+    if(target.closest('#v51Sound')){e.preventDefault();e.stopImmediatePropagation();const m=q('#v51SoundMenu');const show=m?.classList.contains('hidden');closeMenus();if(show)m?.classList.remove('hidden');return}
+    const sb=target.closest('[data-v51-sound]');if(sb){e.preventDefault();e.stopImmediatePropagation();setSound(sb.dataset.v51Sound==='on');closeMenus();return}
+    if(target.closest('#v51ProfileBtn')){e.preventDefault();e.stopImmediatePropagation();const m=q('#v51ProfileMenu');const show=m?.classList.contains('hidden');closeMenus();if(show)m?.classList.remove('hidden');return}
+    if(target.closest('#v51ChangePassword')){e.preventDefault();e.stopImmediatePropagation();closeMenus();openPassword();return}
+    if(target.closest('#v51Logout')){e.preventDefault();e.stopImmediatePropagation();closeMenus();q('#staffLogout')?.click();return}
+    if(!target.closest('.v51-tool-menu-wrap'))closeMenus();
+  },true);
+  window.addEventListener('resize',()=>{if(innerWidth>900){q('#adminSidebar')?.classList.remove('open');q('#sidebarOverlay')?.classList.remove('show');document.body.classList.remove('sidebar-open')}});
+  const boot=()=>{compactHeader();setTimeout(compactHeader,300);setTimeout(compactHeader,1200)};
+  document.readyState==='loading'?document.addEventListener('DOMContentLoaded',boot):boot();
+  window.addEventListener('wl:data-loaded',boot);window.addEventListener('swk-language-applied',boot);
+})();
