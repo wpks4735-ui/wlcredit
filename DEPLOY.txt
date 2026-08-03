@@ -1,10 +1,10 @@
-WL Credit V17 — Unified Customer Username
+WL Credit V18 Unified Public IDs
 
-Deployment order:
-1. Run V17-UNIFIED-CUSTOMER-USERNAME.sql in Supabase SQL Editor.
-2. Confirm username and customer_code are identical (WL001, WL002, ...).
-3. Upload all website files to the GitHub repository root.
-4. Wait for Cloudflare Pages deployment, then close old tabs and reopen the site.
+1. Run V18-UNIFIED-PUBLIC-IDS.sql in Supabase SQL Editor.
+2. Upload all project files to GitHub/Cloudflare Pages.
+3. Wait for deployment, then close all old tabs and reopen the site.
+4. Customer Username / Customer ID display: WL001, WL002, ...
+5. Loan ID display: L00001, L00002, ...
+6. Global search supports Username, Loan ID, customer name, IC and phone.
 
-Customer ID shown in the UI = login username = customers.username.
-The legacy customer_code column is retained only as a synchronized compatibility alias for existing database RPCs.
+The database UUIDs remain internal. Legacy customer_code/loan_id values are retained for compatibility but are never shown as public IDs.

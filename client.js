@@ -13,7 +13,7 @@ function contactsHtml(){const ct=data?.contacts||{},rows=[];if(ct.telegram)rows.
 window.copyBankAccount=async value=>{try{await navigator.clipboard.writeText(value);toast(tr('copySuccess'))}catch{const ta=document.createElement('textarea');ta.value=value;document.body.appendChild(ta);ta.select();try{document.execCommand('copy');toast(tr('copySuccess'))}catch{toast(tr('copyFailed'),true)}ta.remove()}}
 function render(){
  if(!data)return;
- $('#clientName').textContent=data.customer.full_name;$('#clientCodeDisplay').textContent=(data.customer.username||data.customer.customer_code);
+ $('#clientName').textContent=data.customer.full_name;$('#clientCodeDisplay').textContent=wlCanonicalCustomerUsername(data.customer.username||data.customer.customer_code);
  const all=data.loans||[],active=all.filter(x=>x.status==='active'),hist=all.filter(x=>x.status==='paid'),shown=tab==='active'?active:tab==='history'?hist:all;
  const historyOnly=tab==='history';
  ['announcementSection','contactSection','paymentSubmissionsSection'].forEach(id=>{const el=$('#'+id);if(el)el.classList.toggle('hidden',historyOnly)});
@@ -47,10 +47,19 @@ function renderPaymentAssignment(){
  box.innerHTML=`<h3>${tr('paymentInformation')}</h3>${bankHtml}`;
 }
 
+
+function wlCanonicalCustomerUsername(value){
+ const raw=String(value||'').trim().toUpperCase();
+ const m=raw.match(/(\d+)$/);
+ if(!m)return raw;
+ if(/^WL\d+$/.test(raw)||/^(?:SWKC|CUS|CUSTOMER|C)\d+$/.test(raw))return 'WL'+String(Number(m[1])).padStart(3,'0');
+ return raw;
+}
+
 function wlShortLoanCode(value){
  const raw=String(value||'');
  const m=raw.match(/(\d+)$/);
- return m?'L'+String(Number(m[1])).padStart(4,'0'):raw;
+ return m?'L'+String(Number(m[1])).padStart(5,'0'):raw;
 }
 
 function openPaymentPage(loanUuid,loanCode){
@@ -211,7 +220,7 @@ function v310ShortLoanId(value){
   const raw=String(value||'').trim();
   const match=raw.match(/(\d+)$/);
   if(!match)return raw||'-';
-  return 'L'+String(Number(match[1])).padStart(4,'0');
+  return 'L'+String(Number(match[1])).padStart(5,'0');
 }
 function v310ApplyShortLoanIds(root=document){
   const nodes=root.querySelectorAll?.('.loan-card h3, .submission-card strong, #paymentAssignment .payment-loan-summary strong')||[];

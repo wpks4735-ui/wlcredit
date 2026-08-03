@@ -133,13 +133,14 @@ window.addEventListener('DOMContentLoaded',()=>{q('#refreshBackups')?.addEventLi
   const lang = () => (window.SWK_LANG?.current || localStorage.getItem('swk_lang') || 'en');
   const tx = (en, zh, ms) => lang()==='zh' ? zh : lang()==='ms' ? ms : en;
   const shortCode = (value, prefix) => {
-    const s=String(value||'');
+    const s=String(value||'').trim().toUpperCase();
     const digits=(s.match(/(\d+)$/)||[])[1];
-    if(digits) return prefix + digits.slice(-4).padStart(4,'0');
-    return s.length>8 ? prefix + s.replace(/[^a-z0-9]/gi,'').slice(-4).toUpperCase() : s;
+    if(!digits)return s;
+    if(prefix==='WL')return 'WL'+String(Number(digits)).padStart(3,'0');
+    return 'L'+String(Number(digits)).padStart(5,'0');
   };
-  window.wlShortCustomerId=v=>shortCode(v,'C');
-  window.wlShortLoanId=v=>shortCode(v,'L');
+  window.wlShortCustomerId=v=>window.normalizeCustomerUsername?window.normalizeCustomerUsername(v):shortCode(v,'WL');
+  window.wlShortLoanId=v=>window.canonicalLoanId?window.canonicalLoanId(v):shortCode(v,'L');
 
   function applyV294Language(){
     const map={
@@ -606,7 +607,7 @@ const ownApplication=a=>{
 };
 const reviewStatus=s=>['under_review','reviewing','in_review','claimed'].includes(norm(s));
 const reviewApplications=()=>((window.state?.applications)||[]).filter(a=>reviewStatus(a.status)&&ownApplication(a));
-const shortLoan=v=>{const s=String(v||'');const m=s.match(/(\d+)$/);return m?`L${String(Number(m[1])).padStart(4,'0')}`:s};
+const shortLoan=v=>{const s=String(v||'');const m=s.match(/(\d+)$/);return m?`L${String(Number(m[1])).padStart(5,'0')}`:s};
 const today=()=>new Date().toISOString().slice(0,10);
 const fmtMoney=n=>typeof money==='function'?money(Number(n||0)):`MYR ${Number(n||0).toFixed(2)}`;
 const statusText=s=>({pending:L('待认领','Pending','Menunggu'),under_review:L('审核中','Under Review','Dalam Semakan'),approved:L('已批准','Approved','Diluluskan'),rejected:L('已拒绝','Rejected','Ditolak')}[s]||s||'-');
@@ -723,7 +724,7 @@ const isFinance=()=>R()==='finance';
 const isCS=()=>R()==='customer_service';
 const canFinance=()=>isSA()||isFinance();
 const money2=n=>typeof money==='function'?money(Number(n||0)):`MYR ${Number(n||0).toFixed(2)}`;
-const shortLoan=v=>{const s=String(v||'');const m=s.match(/(\d+)$/);return m?`L${String(Number(m[1])).padStart(4,'0')}`:s};
+const shortLoan=v=>{const s=String(v||'');const m=s.match(/(\d+)$/);return m?`L${String(Number(m[1])).padStart(5,'0')}`:s};
 let fstate={banks:[],transactions:[],loading:false};
 function sec(id,html){let x=$('#'+id);if(!x){x=document.createElement('section');x.id=id;x.className='section';document.querySelector('main.main')?.appendChild(x)}x.innerHTML=html;return x}
 function btn(section,label,badge=''){const x=document.createElement('button');x.dataset.section=section;x.innerHTML=`<span>${label}</span>${badge?`<span id="${badge}" class="nav-count hidden">0</span>`:''}`;return x}
@@ -1658,7 +1659,7 @@ async function openFinalApprove(id){
   if(back.error||!back.data)return toast(back.error?.message||L('状态更新失败','Status update failed','Kemas kini status gagal'),true);
   const x=await c.rpc('staff_approve_loan_application',{p_application_id:id,p_temp_pin:pin,p_principal:Number(a.approved_principal||0),p_interest:Number(a.approved_interest||0),p_settlement_amount:Number(a.approved_settlement_amount||0),p_disbursement_date:String(a.finance_disbursed_at||today()).slice(0,10),p_due_date:a.approved_due_date,p_notes:a.approval_notes||''});
   if(x.error||!x.data?.ok){await c.from('loan_applications').update({status:'finance_disbursed'}).eq('id',id);return toast(x.error?.message||x.data?.error||L('建立账号失败','Account creation failed','Cipta akaun gagal'),true)}
-  const d=x.data;window.modal?.(`<h2>${L('账号与贷款已建立','Account and loan created','Akaun dan pinjaman dicipta')}</h2><p><strong>Username：</strong>${esc(d.customer_code)}</p><p><strong>Password：</strong>${esc(d.temporary_password)}</p><p><strong>Loan ID：</strong>${esc(d.loan_id)}</p>`);await window.loadAll?.();await refreshApplications();
+  const d=x.data;window.modal?.(`<h2>${L('账号与贷款已建立','Account and loan created','Akaun dan pinjaman dicipta')}</h2><p><strong>Username：</strong>${esc(window.normalizeCustomerUsername?normalizeCustomerUsername(d.username||d.customer_code):d.username||d.customer_code)}</p><p><strong>Password：</strong>${esc(d.temporary_password)}</p><p><strong>Loan ID：</strong>${esc(window.canonicalLoanId?canonicalLoanId(d.loan_id):d.loan_id)}</p>`);await window.loadAll?.();await refreshApplications();
  };
 }
 
@@ -2467,12 +2468,12 @@ setTimeout(()=>{window.renderLoanReview?.();renderFinanceApplications();renderPe
   const PLACEHOLDER = {
     zh: {
       'Search loan ID / customer / IC / phone / payment ID':'搜索贷款编号／客户／IC／电话／付款编号',
-      'Search Loan ID / Customer / IC / Phone / Payment ID':'搜索贷款编号／客户／IC／电话／付款编号',
+      'Search Loan ID / Customer / IC / Phone / Payment ID':'搜索用户名／贷款编号／客户／IC／电话／付款编号',
       'example: john':'例如：john','Enter username':'输入用户名','Enter password':'输入密码'
     },
     ms: {
       'Search loan ID / customer / IC / phone / payment ID':'Cari ID pinjaman / pelanggan / IC / telefon / ID bayaran',
-      'Search Loan ID / Customer / IC / Phone / Payment ID':'Cari ID pinjaman / pelanggan / IC / telefon / ID bayaran',
+      'Search Loan ID / Customer / IC / Phone / Payment ID':'Cari nama pengguna / ID pinjaman / pelanggan / IC / telefon / ID bayaran',
       'example: john':'contoh: john','Enter username':'Masukkan nama pengguna','Enter password':'Masukkan kata laluan'
     }
   };
