@@ -39,7 +39,7 @@
       <div class="v23-active-loan-list">${loans.map(l=>`<article class="v23-active-loan-card">
         <div class="v23-loan-card-head"><strong>${E(loanCode(l))}</strong><span class="badge ${Number(l.overdue_charge||0)>0?'danger':'ok'}">${Number(l.overdue_charge||0)>0?T('逾期','Overdue','Tertunggak'):T('进行中','Active','Aktif')}</span></div>
         <div class="v23-loan-grid"><span>${T('本金','Principal','Prinsipal')}<b>${M(l.principal)}</b></span><span>${T('利息','Interest','Faedah')}<b>${M(l.interest)}</b></span><span>${T('逾期应收','Overdue Due','Caj Tertunggak')}<b>${M(l.overdue_charge)}</b></span><span>${T('到期日','Due Date','Tarikh Matang')}<b>${D(l.due_date)}</b></span></div>
-        <div class="actions"><button class="btn btn-primary" onclick="closeModal();openLoan('${E(l.id)}')">${T('查看贷款','View Loan','Lihat Pinjaman')}</button><button class="btn btn-danger" onclick="v23OpenOverdue('${E(l.id)}')">${T('设置逾期','Set Overdue','Tetapkan Tertunggak')}</button></div>
+        <div class="actions"><button class="btn btn-primary" onclick="closeModal();openLoan('${E(l.id)}')">${T('查看贷款','View Loan','Lihat Pinjaman')}</button><button class="btn btn-danger" data-v23-overdue="${E(l.id)}">${T('设置逾期','Set Overdue','Tetapkan Tertunggak')}</button></div>
       </article>`).join('')||`<div class="empty-state">${T('没有进行中的贷款','No active loans','Tiada pinjaman aktif')}</div>`}</div>`);
   };
 
@@ -76,7 +76,7 @@
     }
     body.innerHTML=rows.map(c=>{
       const n=activeLoansFor(c.id).length,enabled=c.is_active!==false;
-      return `<tr><td><button class="v23-link-button mono" onclick="openCustomerProfile('${E(c.id)}')">${E(canonicalUsername(c))}</button></td><td><button class="v23-link-button" onclick="openCustomerProfile('${E(c.id)}')">${E(c.full_name||'-')}</button></td><td>${E(c.phone||'-')}</td><td>${E(c.id_number||'-')}</td><td><button class="v23-loan-count ${n?'has-loans':''}" ${n?`onclick="v23OpenActiveLoans('${E(c.id)}')"`:'disabled'}>${n}</button></td><td><span class="badge ${enabled?'ok':'danger'}">${enabled?T('启用','Enabled','Aktif'):T('停用','Disabled','Dinyahaktifkan')}</span></td><td class="actions"><button class="btn btn-secondary" onclick="openCustomerProfile('${E(c.id)}')">${T('查看','View','Lihat')}</button><button class="btn btn-secondary" onclick="openCustomer('${E(c.id)}')">${T('编辑','Edit','Sunting')}</button><button class="btn btn-secondary" onclick="changePin('${E(c.id)}')">${T('修改密码','Change Password','Tukar Kata Laluan')}</button></td></tr>`;
+      return `<tr><td><button class="v23-link-button mono" onclick="openCustomerProfile('${E(c.id)}')">${E(canonicalUsername(c))}</button></td><td><button class="v23-link-button" onclick="openCustomerProfile('${E(c.id)}')">${E(c.full_name||'-')}</button></td><td>${E(c.phone||'-')}</td><td>${E(c.id_number||'-')}</td><td><button class="v23-loan-count ${n?'has-loans':''}" ${n?`data-v23-active-loans="${E(c.id)}"`:'disabled'}>${n}</button></td><td><span class="badge ${enabled?'ok':'danger'}">${enabled?T('启用','Enabled','Aktif'):T('停用','Disabled','Dinyahaktifkan')}</span></td><td class="actions"><button class="btn btn-secondary" onclick="openCustomerProfile('${E(c.id)}')">${T('查看','View','Lihat')}</button><button class="btn btn-secondary" onclick="openCustomer('${E(c.id)}')">${T('编辑','Edit','Sunting')}</button><button class="btn btn-secondary" onclick="changePin('${E(c.id)}')">${T('修改密码','Change Password','Tukar Kata Laluan')}</button></td></tr>`;
     }).join('')||`<tr><td colspan="7" class="muted">${T('没有记录','No records','Tiada rekod')}</td></tr>`;
   }
 
@@ -87,7 +87,7 @@
       const th=document.createElement('th');th.dataset.v23OverdueCol='1';th.textContent=T('逾期金额','Overdue','Tertunggak');
       head.insertBefore(th,head.children[8]||null);
     }
-    body.innerHTML=(state.loans||[]).map(l=>{const c=(state.customers||[]).find(x=>String(x.id)===String(l.customer_id));const bank=c?.receiving_bank?.bank_name||'-';const contacts=[c?.telegram_contact?.label,c?.whatsapp_contact?.label].filter(Boolean).join(' + ')||'-';const od=Number(l.overdue_charge||0);return `<tr><td class="mono">${E(loanCode(l))}</td><td><button class="v23-link-button" onclick="openCustomerProfile('${E(l.customer_id)}')">${E(canonicalUsername(c))} · ${E(c?.full_name||l.customers?.full_name||'-')}</button></td><td>${M(l.principal)}</td><td>${M(l.interest)}</td><td>${M(l.settlement_amount)}</td><td>${E(bank)}</td><td>${E(contacts)}</td><td>${D(l.due_date)}</td><td><button class="v23-overdue-amount ${od>0?'has-overdue':''}" onclick="v23OpenOverdue('${E(l.id)}')">${M(od)}</button></td><td><span class="badge ${l.status==='paid'?'ok':od>0?'danger':'warn'}">${l.status==='paid'?T('已完成','Completed','Selesai'):od>0?T('逾期','Overdue','Tertunggak'):T('进行中','Active','Aktif')}</span></td><td class="actions"><button class="btn btn-secondary" onclick="openLoan('${E(l.id)}')">${T('编辑','Edit','Sunting')}</button><button class="btn btn-danger" onclick="v23OpenOverdue('${E(l.id)}')">${T('设置逾期','Set Overdue','Tetapkan Tertunggak')}</button></td></tr>`}).join('');
+    body.innerHTML=(state.loans||[]).map(l=>{const c=(state.customers||[]).find(x=>String(x.id)===String(l.customer_id));const bank=c?.receiving_bank?.bank_name||'-';const contacts=[c?.telegram_contact?.label,c?.whatsapp_contact?.label].filter(Boolean).join(' + ')||'-';const od=Number(l.overdue_charge||0);return `<tr><td class="mono">${E(loanCode(l))}</td><td><button class="v23-link-button" onclick="openCustomerProfile('${E(l.customer_id)}')">${E(canonicalUsername(c))} · ${E(c?.full_name||l.customers?.full_name||'-')}</button></td><td>${M(l.principal)}</td><td>${M(l.interest)}</td><td>${M(l.settlement_amount)}</td><td>${E(bank)}</td><td>${E(contacts)}</td><td>${D(l.due_date)}</td><td><button class="v23-overdue-amount ${od>0?'has-overdue':''}" data-v23-overdue="${E(l.id)}">${M(od)}</button></td><td><span class="badge ${l.status==='paid'?'ok':od>0?'danger':'warn'}">${l.status==='paid'?T('已完成','Completed','Selesai'):od>0?T('逾期','Overdue','Tertunggak'):T('进行中','Active','Aktif')}</span></td><td class="actions"><button class="btn btn-secondary" onclick="openLoan('${E(l.id)}')">${T('编辑','Edit','Sunting')}</button><button class="btn btn-danger" data-v23-overdue="${E(l.id)}">${T('设置逾期','Set Overdue','Tetapkan Tertunggak')}</button></td></tr>`}).join('');
   }
 
   function applyLabels(){
@@ -100,14 +100,19 @@
     Object.entries(labels).forEach(([sel,text])=>{const el=$(sel);if(!el)return;if(el.tagName==='INPUT')el.placeholder=text;else el.textContent=text});
   }
 
-  const oldRenderAll=window.renderAll;
-  if(typeof oldRenderAll==='function')window.renderAll=function(){const r=oldRenderAll.apply(this,arguments);setTimeout(()=>{renderCustomersV23();renderLoansV23();applyLabels()},0);return r};
   const oldRenderCustomers=window.renderCustomers;
   window.renderCustomers=function(){try{oldRenderCustomers?.apply(this,arguments)}catch(_){}renderCustomersV23()};
   const oldRenderLoans=window.renderLoans;
   window.renderLoans=function(){try{oldRenderLoans?.apply(this,arguments)}catch(_){}renderLoansV23()};
 
-  document.addEventListener('input',e=>{if(e.target?.id==='customerSearch')renderCustomersV23()});
-  document.addEventListener('change',e=>{if(e.target?.matches('.lang-select'))setTimeout(()=>{renderCustomersV23();renderLoansV23();applyLabels()},80)});
-  document.addEventListener('DOMContentLoaded',()=>setTimeout(()=>{renderCustomersV23();renderLoansV23();applyLabels()},900));
+  let searchTimer=null;
+  document.addEventListener('input',e=>{if(e.target?.id==='customerSearch'){clearTimeout(searchTimer);searchTimer=setTimeout(renderCustomersV23,120)}});
+  document.addEventListener('click',e=>{
+    const loanBtn=e.target.closest?.('[data-v23-active-loans]');
+    if(loanBtn){e.preventDefault();e.stopPropagation();window.v23OpenActiveLoans(loanBtn.dataset.v23ActiveLoans);return}
+    const overdueBtn=e.target.closest?.('[data-v23-overdue]');
+    if(overdueBtn){e.preventDefault();e.stopPropagation();window.v23OpenOverdue(overdueBtn.dataset.v23Overdue);return}
+  });
+  document.addEventListener('change',e=>{if(e.target?.matches('.lang-select'))setTimeout(()=>{renderCustomersV23();renderLoansV23();applyLabels()},120)});
+  document.addEventListener('DOMContentLoaded',()=>setTimeout(()=>{renderCustomersV23();renderLoansV23();applyLabels()},1000));
 })();

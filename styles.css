@@ -637,3 +637,10 @@ body.sidebar-collapsed #adminSidebar>*{visibility:hidden!important}
 .v23-active-loan-list{display:grid;gap:14px}.v23-active-loan-card{border:1px solid #dbe4ef;border-radius:16px;padding:16px;background:#fff}.v23-loan-card-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}.v23-loan-card-head strong{font-size:18px}.v23-loan-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:14px}.v23-loan-grid span{display:flex;flex-direction:column;gap:4px;background:#f6f8fb;border-radius:10px;padding:10px}.v23-loan-grid b{font-size:15px}
 .v23-overdue-amount{border:1px solid #d9e2ec;background:#f8fafc;border-radius:9px;padding:7px 10px;cursor:pointer;font-weight:700}.v23-overdue-amount.has-overdue{background:#fff0ef;border-color:#e8a6a0;color:#b42318}.v23-overdue-amount:hover{filter:brightness(.98)}
 @media(max-width:760px){.v23-loan-grid{grid-template-columns:1fr 1fr}.v23-active-loan-card .actions{display:grid;grid-template-columns:1fr}.v23-active-loan-card .btn{width:100%}}
+
+/* V23.1 stability and Today Work */
+#adminSidebar,#customerSearch,.global-search{animation:none!important;transition:width .2s ease,transform .2s ease!important}
+.v23-loan-count,.v23-overdue-amount,[data-v23-active-loans],[data-v23-overdue]{pointer-events:auto!important;cursor:pointer!important;position:relative;z-index:2}
+#modal{z-index:99999!important}.modal-card{position:relative;z-index:100000}
+.today-work-grid{display:grid;gap:22px}.v231-today-work h3{margin:8px 0 12px}
+@media(min-width:1200px){.today-work-grid{grid-template-columns:1fr 1fr}}

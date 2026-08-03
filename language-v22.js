@@ -56,7 +56,7 @@
   },true);
   document.addEventListener('change',e=>{if(e.target.matches?.('.lang-select'))setLang(e.target.value)},true);
   const mo=new MutationObserver(ms=>{if(applying)return;let needed=false;for(const m of ms){if(m.type==='childList'||m.type==='characterData'){needed=true;break}}if(needed){clearTimeout(window.__v22lang);window.__v22lang=setTimeout(()=>{applying=true;apply();applying=false},20)}});
-  const boot=()=>{apply();mo.observe(document.body,{subtree:true,childList:true,characterData:true});setTimeout(apply,300);setTimeout(apply,1200)};
+  const boot=()=>{apply();/* V23.1: disabled continuous DOM observer to prevent sidebar/search flicker. */setTimeout(apply,300);setTimeout(apply,1200)};
   document.readyState==='loading'?document.addEventListener('DOMContentLoaded',boot):boot();
   window.V22_LANGUAGE={set:setLang,apply,current:getLang};
 })();

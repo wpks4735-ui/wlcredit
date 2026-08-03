@@ -624,14 +624,14 @@ function navButton(section,label,badgeId){const b=document.createElement('button
 function injectNavigation(){
  const nav=$('#nav'); if(!nav)return;
  const dashboardBtn=nav.querySelector('[data-section="dashboard"]');
- if(!$('#navMyWork')&&dashboardBtn){const my=navButton('myWork',L('我的工作','My Work','Kerja Saya'),'navMyWorkBadge');my.id='navMyWork';nav.insertBefore(my,dashboardBtn)}
+ if(!$('#navMyWork')&&dashboardBtn){const my=navButton('myWork',L('今日工作','Today Work','Kerja Hari Ini'),'navMyWorkBadge');my.id='navMyWork';nav.insertBefore(my,dashboardBtn)}
  const loanMenu=nav.querySelector('[data-nav-group="loan"] .nav-submenu');const appBtn=loanMenu?.querySelector('[data-section="loanApplications"]');
  if(loanMenu&&appBtn&&!loanMenu.querySelector('[data-section="loanReview"]')){const review=navButton('loanReview',L('贷款审核','Loan Review','Semakan Pinjaman'),'navLoanReviewBadge');appBtn.after(review)}
  const reportsMenu=nav.querySelector('[data-nav-group="reports"] .nav-submenu');if(reportsMenu&&!reportsMenu.querySelector('[data-section="staffPerformance"]')){const perf=navButton('staffPerformance',L('客服业绩报表','Staff Performance','Prestasi Staf'));reportsMenu.prepend(perf)}
 }
 function section(id,html){if($('#'+id))return;const s=document.createElement('section');s.id=id;s.className='section';s.innerHTML=html;document.querySelector('main.main')?.appendChild(s)}
 function injectSections(){
- section('myWork',`<div class="workflow-grid" id="myWorkStats"></div><div class="card"><div class="section-head"><h3>${L('今日收款清单','Today Collection List','Senarai Kutipan Hari Ini')}</h3><small class="muted">${L('按当前登录客服范围显示','Filtered by your assigned customers','Mengikut pelanggan ditugaskan')}</small></div><div class="table-wrap"><table class="table"><thead><tr><th>${L('贷款编号','Loan ID','ID Pinjaman')}</th><th>${L('客户','Customer','Pelanggan')}</th><th>${L('本期利息','Interest','Faedah')}</th><th>${L('清账金额','Settlement','Penyelesaian')}</th><th>${L('逾期应收','Overdue','Tertunggak')}</th><th>${L('到期时间','Due','Tarikh')}</th></tr></thead><tbody id="todayCollectionRows"></tbody></table></div></div>`);
+ section('myWork',`<div class="card v231-today-work"><div class="section-head"><div><h2>${L('今日工作','Today Work','Kerja Hari Ini')}</h2><small class="muted">${L('只显示今日到期和当前逾期贷款','Shows only loans due today and currently overdue','Hanya pinjaman matang hari ini dan tertunggak')}</small></div></div><div class="today-work-grid"><div><h3>${L('今日到期','Due Today','Matang Hari Ini')}</h3><div class="table-wrap"><table class="table"><thead><tr><th>${L('贷款编号','Loan ID','ID Pinjaman')}</th><th>${L('客户','Customer','Pelanggan')}</th><th>${L('本期利息','Interest','Faedah')}</th><th>${L('逾期应收','Overdue','Tertunggak')}</th><th>${L('到期日','Due Date','Tarikh Matang')}</th><th>${L('操作','Action','Tindakan')}</th></tr></thead><tbody id="todayDueRows"></tbody></table></div></div><div><h3>${L('逾期贷款','Overdue Loans','Pinjaman Tertunggak')}</h3><div class="table-wrap"><table class="table"><thead><tr><th>${L('贷款编号','Loan ID','ID Pinjaman')}</th><th>${L('客户','Customer','Pelanggan')}</th><th>${L('逾期天数','Days Overdue','Hari Tertunggak')}</th><th>${L('逾期金额','Overdue Amount','Jumlah Tertunggak')}</th><th>${L('操作','Action','Tindakan')}</th></tr></thead><tbody id="todayOverdueRows"></tbody></table></div></div></div></div>`);
  section('loanReview',`<div class="section-head"><div><h2>${L('贷款审核','Loan Review','Semakan Pinjaman')}</h2><small class="muted">${L('客服只显示自己认领且尚未完成的申请；Super Admin 可查看全部。','Staff see their claimed unfinished applications; Super Admin sees all.','Staf melihat permohonan sendiri; Super Admin melihat semua.')}</small></div></div><div class="table-wrap"><table class="table"><thead><tr><th>${L('申请编号','Application ID','ID Permohonan')}</th><th>${L('申请人','Applicant','Pemohon')}</th><th>${L('电话','Phone','Telefon')}</th><th>${L('申请金额','Requested','Jumlah')}</th><th>${L('负责人','Owner','Pegawai')}</th><th>${L('状态','Status','Status')}</th><th>${L('操作','Actions','Tindakan')}</th></tr></thead><tbody id="loanReviewRows"></tbody></table></div>`);
  section('staffPerformance',`<div class="section-head"><div><h2>${L('客服业绩报表','Staff Performance','Prestasi Staf')}</h2><small class="muted">${L('根据总览选择的日期范围计算。','Calculated using the dashboard date range.','Dikira mengikut julat tarikh dashboard.')}</small></div></div><div class="table-wrap"><table class="table"><thead><tr><th>${L('客服','Staff','Staf')}</th><th>${L('新增客户','New Customers','Pelanggan Baharu')}</th><th>${L('批准贷款','Approved','Diluluskan')}</th><th>${L('放款总额','Disbursed','Dikeluarkan')}</th><th>${L('已收本金','Principal','Prinsipal')}</th><th>${L('已收利息','Interest','Faedah')}</th><th>${L('已收逾期','Overdue','Tertunggak')}</th><th>${L('已结清','Settled','Selesai')}</th><th>${L('盈亏','P/L','Untung/Rugi')}</th></tr></thead><tbody id="staffPerformanceRows"></tbody></table></div>`);
  const dash=$('#dashboard');if(dash&&!$('#workflowNoticeCenter')){const c=document.createElement('div');c.id='workflowNoticeCenter';c.className='card workflow-notice-center';c.innerHTML=`<div class="section-head"><h3>${L('通知中心','Notification Center','Pusat Notifikasi')}</h3></div><div id="workflowNoticeGrid" class="workflow-grid"></div>`;dash.insertBefore(c,dash.querySelector('.dashboard-bank-section'))}
@@ -654,24 +654,23 @@ function workCard(label,value,section,kind=''){return `<button class="work-card 
 function renderMyWork(){
  if(!window.state)return;
  const r=role();
- const root=$('#myWorkStats');
- const collectionCard=$('#myWorkStats')?.nextElementSibling;
- if(r==='finance'){
-  const disbursements=(state.applications||[]).filter(a=>norm(a.status)==='pending_disbursement');
-  const receipts=(state.submissions||[]).filter(x=>['pending','pending_finance','awaiting_finance'].includes(norm(x.finance_status||x.status)));
-  const advances=(state.salaryAdvances||[]).filter(x=>['requested','pending'].includes(norm(x.status)));
-  const payroll=(state.payroll||[]).filter(x=>norm(x.payment_status)==='pending');
-  if(root)root.innerHTML=workCard(L('待放款申请','Pending Disbursement Applications','Permohonan Menunggu Pengeluaran'),disbursements.length,'financeDisbursements','warn')+workCard(L('待收款申请','Pending Receipt Applications','Permohonan Penerimaan'),receipts.length,'financeReceipts','warn')+workCard(L('待预支工资申请','Pending Salary Advance Requests','Permohonan Pendahuluan Gaji'),advances.length,'companyManagement','warn')+workCard(L('待发工资','Pending Payroll','Gaji Belum Dibayar'),payroll.length,'companyManagement','info');
-  if(collectionCard)collectionCard.classList.add('hidden');
-  document.querySelectorAll('#myWork [data-open]').forEach(b=>b.onclick=()=>{if(b.dataset.open==='companyManagement'){switchSection('companyManagement');setTimeout(()=>document.querySelector('.company-tab[data-company-tab="advancesPanel"]')?.click(),50)}else switchSection(b.dataset.open)});
-  return;
- }
- if(collectionCard)collectionCard.classList.remove('hidden');
- const mineApps=(state.applications||[]).filter(ownApplication),pending=(state.applications||[]).filter(a=>norm(a.status)==='pending').length,review=reviewApplications().length,pendingFinance=mineApps.filter(a=>norm(a.status)==='pending_disbursement').length,financeDone=mineApps.filter(a=>norm(a.status)==='finance_disbursed').length;
- const customers=(state.customers||[]).filter(ownCustomer),ids=new Set(customers.map(c=>String(c.id))),loans=(state.loans||[]).filter(l=>ids.has(String(l.customer_id))),due=loans.filter(l=>String(l.due_date||'').slice(0,10)===today()&&l.status!=='paid'),overdue=loans.filter(l=>l.status!=='paid'&&String(l.due_date||'').slice(0,10)<today()),loanIds=new Set(loans.map(l=>String(l.id))),payments=(state.submissions||[]).filter(p=>loanIds.has(String(p.loan_id))&&p.status==='pending');
- if(root)root.innerHTML=workCard(L('新贷款申请','New Applications','Permohonan Baharu'),pending,'loanApplications','info')+workCard(L('我的贷款审核','My Reviews','Semakan Saya'),review,'loanReview','warn')+workCard(L('待财务出款','Waiting for Finance','Menunggu Kewangan'),pendingFinance,'pendingFinance','info')+workCard(L('财务已出款待确认','Finance Disbursed — Confirm','Kewangan Telah Bayar — Sahkan'),financeDone,'pendingFinance','warn')+workCard(L('待付款审核','Payments Pending','Bayaran Menunggu'),payments.length,'paymentSubmissions','warn');
- const rows=$('#todayCollectionRows');if(rows)rows.innerHTML=due.map(l=>{const c=state.customers.find(x=>String(x.id)===String(l.customer_id));return `<tr><td>${shortLoan(l.loan_id)}</td><td>${escv(c?.full_name||'-')}</td><td>${fmtMoney(l.interest)}</td><td>${fmtMoney(l.settlement_amount)}</td><td>${fmtMoney(l.overdue_charge)}</td><td>${escv(l.expected_payment_at?new Date(l.expected_payment_at).toLocaleString():l.due_date||'-')}</td></tr>`}).join('')||`<tr><td colspan="6">${L('今天没有到期账目','No collections due today','Tiada kutipan hari ini')}</td></tr>`;
- document.querySelectorAll('#myWork [data-open]').forEach(b=>b.onclick=()=>switchSection(b.dataset.open));
+ if(r!=='customer_service')return;
+ const todayStr=today();
+ const customerById=new Map((state.customers||[]).map(c=>[String(c.id),c]));
+ const mine=(state.loans||[]).filter(l=>{
+   if(norm(l.status)!=='active')return false;
+   const c=customerById.get(String(l.customer_id));
+   return manager()||ownCustomer(c||{});
+ });
+ const due=mine.filter(l=>String(l.due_date||'').slice(0,10)===todayStr);
+ const overdue=mine.filter(l=>l.due_date&&String(l.due_date).slice(0,10)<todayStr);
+ const code=l=>shortLoan(l.loan_id);
+ const uname=c=>window.v23CustomerUsername?window.v23CustomerUsername(c):(c?.username||c?.customer_code||'-');
+ const dueRows=$('#todayDueRows');
+ const overdueRows=$('#todayOverdueRows');
+ if(dueRows)dueRows.innerHTML=due.map(l=>{const c=customerById.get(String(l.customer_id));return `<tr><td class="mono">${escv(code(l))}</td><td>${escv(uname(c))} · ${escv(c?.full_name||'-')}</td><td>${fmtMoney(l.interest)}</td><td>${fmtMoney(l.overdue_charge)}</td><td>${escv(String(l.due_date||'-').slice(0,10))}</td><td><button class="btn btn-secondary" onclick="openLoan('${l.id}')">${L('查看','View','Lihat')}</button> <button class="btn btn-danger" data-v23-overdue="${l.id}">${L('设置逾期','Set Overdue','Tetapkan Tertunggak')}</button></td></tr>`}).join('')||`<tr><td colspan="6" class="muted">${L('今天没有到期贷款','No loans due today','Tiada pinjaman matang hari ini')}</td></tr>`;
+ if(overdueRows)overdueRows.innerHTML=overdue.map(l=>{const c=customerById.get(String(l.customer_id));const days=Math.max(1,Math.floor((new Date(todayStr)-new Date(String(l.due_date).slice(0,10)))/86400000));return `<tr><td class="mono">${escv(code(l))}</td><td>${escv(uname(c))} · ${escv(c?.full_name||'-')}</td><td>${days}</td><td>${fmtMoney(l.overdue_charge)}</td><td><button class="btn btn-secondary" onclick="openLoan('${l.id}')">${L('查看','View','Lihat')}</button> <button class="btn btn-danger" data-v23-overdue="${l.id}">${L('设置逾期','Set Overdue','Tetapkan Tertunggak')}</button></td></tr>`}).join('')||`<tr><td colspan="5" class="muted">${L('目前没有逾期贷款','No overdue loans','Tiada pinjaman tertunggak')}</td></tr>`;
+ const badge=$('#navMyWorkBadge');if(badge){badge.textContent=due.length+overdue.length;badge.classList.toggle('hidden',!(due.length+overdue.length))}
 }
 function renderNotices(){
  const root=$('#workflowNoticeGrid');if(!root||!window.state)return;const apps=(state.applications||[]),reviews=reviewApplications().length,pending=apps.filter(a=>norm(a.status)==='pending').length,pay=(state.submissions||[]).filter(x=>x.status==='pending').length,mine=apps.filter(ownApplication),pendingFinance=mine.filter(a=>norm(a.status)==='pending_disbursement').length,financeDone=mine.filter(a=>norm(a.status)==='finance_disbursed').length;
