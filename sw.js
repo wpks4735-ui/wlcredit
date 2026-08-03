@@ -1,4 +1,4 @@
-const CACHE='wl-credit-v51-lts-20260803';
+const CACHE='wl-credit-v16-erp-lts-20260803';
 self.addEventListener('install',event=>self.skipWaiting());
 self.addEventListener('activate',event=>event.waitUntil((async()=>{for(const k of await caches.keys())await caches.delete(k);await self.clients.claim();})()));
 self.addEventListener('fetch',event=>{

@@ -72,11 +72,17 @@
     top.classList.add('v51-topbar');
     const old=top.querySelector('.top-actions');if(old)old.classList.add('v51-old-actions');
     top.insertAdjacentHTML('beforeend',`<div id="v51StatusBar" class="v51-statusbar">
-      <button class="v51-status-item" data-v51-target="payment"><span class="v51-bell">🔔</span><span>${t('付款','Payment','Bayaran')}</span><b id="v51PaymentCount">0</b></button>
-      <button class="v51-status-item" data-v51-target="disbursement"><span class="v51-bell">🔔</span><span>${t('出款','Disbursement','Pengeluaran')}</span><b id="v51DisbursementCount">0</b></button>
-      <button class="v51-status-item" data-v51-target="review"><span class="v51-bell">🔔</span><span>${t('审核','Review','Semakan')}</span><b id="v51ReviewCount">0</b></button>
-      <button class="v51-status-item" data-v51-target="salary"><span class="v51-bell">🔔</span><span>${t('工资','Salary','Gaji')}</span><b id="v51SalaryCount">0</b></button>
-      <div class="v51-language"><button id="v51Globe" title="Language">🌐</button><select id="v51Lang"><option value="zh">简体中文</option><option value="en">English</option><option value="ms">Bahasa Melayu</option></select></div>
+      <div class="v51-status-cluster">
+        <button class="v51-status-item" data-v51-target="payment"><span class="v51-status-icon">⇩</span><span>${t('收款','Collection','Kutipan')}</span><b id="v51PaymentCount">0</b><span class="v51-mini-bell">🔔</span></button>
+        <button class="v51-status-item" data-v51-target="disbursement"><span class="v51-status-icon">⇧</span><span>${t('出款','Disbursement','Pengeluaran')}</span><b id="v51DisbursementCount">0</b><span class="v51-mini-bell">🔔</span></button>
+        <button class="v51-status-item" data-v51-target="review"><span class="v51-status-icon">✓</span><span>${t('审核','Review','Semakan')}</span><b id="v51ReviewCount">0</b><span class="v51-mini-bell">🔔</span></button>
+        <button class="v51-status-item" data-v51-target="salary"><span class="v51-status-icon">▣</span><span>${t('工资','Salary','Gaji')}</span><b id="v51SalaryCount">0</b><span class="v51-mini-bell">🔔</span></button>
+      </div>
+      <div class="v51-header-tools">
+        <div class="v51-language"><button id="v51Globe" title="Language">🌐</button><select id="v51Lang"><option value="zh">简体中文</option><option value="en">English</option><option value="ms">Bahasa Melayu</option></select></div>
+        <button id="v51Sound" class="v51-round-tool" type="button" title="Sound">🔊</button>
+        <div class="v51-profile"><span>${esc((S().staff?.username||S().staff?.full_name||'A').slice(0,1).toUpperCase())}</span></div>
+      </div>
     </div>`);
     $('#v51Lang').value=lang();
   }
@@ -91,6 +97,7 @@
     $('#v51StatsApply').onclick=renderStats;$('#v51StaffApply').onclick=renderStaff;
     $('#v51ExportCsv').onclick=()=>exportReport('csv');$('#v51ExportExcel').onclick=()=>exportReport('xls');
     $('#v51Globe').onclick=()=>$('#v51Lang').focus();
+    $('#v51Sound').onclick=()=>{const old=$('#enableSoundBtn');if(old)old.click();const on=localStorage.getItem('wl_notification_sound')!=='off';$('#v51Sound').textContent=on?'🔊':'🔇'};
     $('#v51Lang').onchange=e=>{const old=$('.lang-select');if(old){old.value=e.target.value;old.dispatchEvent(new Event('change',{bubbles:true}))}else{localStorage.setItem('wl_lang',e.target.value);location.reload()}};
     document.addEventListener('wl:data-loaded',renderAll);
     setInterval(()=>{if($('#dashboard')?.classList.contains('active'))renderAll()},10000);
@@ -127,7 +134,7 @@
     const advances=advs.filter(x=>!['rejected','cancelled','deducted','settled','completed','paid'].includes(lower(x.status))&&inRange(dateValue(x,['advance_date','approved_at','created_at']),a,b)).reduce((n,x)=>n+amount(x,['approved_amount','amount']),0);
     const profit=collected-disb-wages-exp-advances;
     const cards=[
-      [t('客户数量','Customers','Pelanggan'),customerTotal,'👥'],[t('进行中的贷款','Active Loans','Pinjaman Aktif'),active,'📄'],[t('新增客户','New Customers','Pelanggan Baharu'),newCustomers,'➕'],[t('新增贷款','New Loans','Pinjaman Baharu'),newLoans,'🧾'],[t('出入款总计','Total In / Out','Jumlah Masuk / Keluar'),`${money(collected)} / ${money(disb)}`,'⇄'],
+      [t('客户数量','Customers','Pelanggan'),customerTotal,'👥'],[t('进行中的贷款','Active Loans','Pinjaman Aktif'),active,'📄'],[t('新增客户','New Customers','Pelanggan Baharu'),newCustomers,'➕'],[t('新增贷款','New Loans','Pinjaman Baharu'),newLoans,'🧾'],[t('出入款总计','Net In / Out','Jumlah Bersih Masuk / Keluar'),money(collected-disb),'⇄'],
       [t('共放款','Total Disbursed','Jumlah Dikeluarkan'),money(disb),'💸'],[t('共收款','Total Collected','Jumlah Dikutip'),money(collected),'💰'],[t('利息收入','Interest Collected','Faedah Dikutip'),money(interest),'％'],[t('逾期收入','Overdue Collected','Tunggakan Dikutip'),money(overdue),'⚠'],[t('公司盈亏','Company Profit / Loss','Untung / Rugi Syarikat'),money(profit),profit<0?'↓':'↑']
     ];
     $('#v51Kpis').innerHTML=cards.map((c,i)=>`<article class="v51-kpi ${i===9?(profit<0?'loss':'gain'):''}"><div class="v51-kpi-icon">${c[2]}</div><div><span>${c[0]}</span><strong>${c[1]}</strong></div></article>`).join('');
