@@ -1,4 +1,1 @@
-WL Credit V18
-Unified public customer Username and Loan ID display
-Customer: WL001
-Loan: L00001
+V19.0

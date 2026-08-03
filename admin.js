@@ -16,7 +16,12 @@ function normalizeCustomerUsername(value){
  return raw;
 }
 function customerUsername(customer){
- return normalizeCustomerUsername(customer?.username||customer?.customer_code||'');
+ const username=String(customer?.username||'').trim();
+ const code=String(customer?.customer_code||'').trim();
+ // Some legacy rows accidentally stored a Loan ID in username. Prefer the
+ // customer code whenever username looks like L00001/SWKL000001.
+ const selected=/^(?:SWKL|L)\d+$/i.test(username)&&code?code:(username||code);
+ return normalizeCustomerUsername(selected);
 }
 function canonicalLoanId(value){
  const raw=String(value||'').trim().toUpperCase();
@@ -450,9 +455,23 @@ function renderCustomers(){
    const activeLoans=state.loans.filter(l=>String(l.customer_id)===String(c.id)&&String(l.status).toLowerCase()==='active').length;
    const statusLabel=c.is_active!==false?activeLabel:inactiveLabel;
    const toggleLabel=c.is_active!==false?inactiveLabel:activeLabel;
-   return `<tr><td><span class="click-link mono" onclick="openCustomerProfile('${c.id}')">${esc(customerUsername(c))}</span></td><td><span class="click-link" onclick="openCustomerProfile('${c.id}')">${esc(c.full_name||'-')}</span></td><td>${esc(c.phone||'-')}</td><td>${esc(c.id_number||'-')}</td><td>${activeLoans}</td><td><span class="badge ${c.is_active!==false?'ok':'danger'}">${esc(statusLabel)}</span></td><td class="actions"><button class="btn btn-secondary" onclick="openCustomerProfile('${c.id}')">${esc(viewLabel)}</button><button class="btn btn-secondary" onclick="openCustomer('${c.id}')">${esc(v11t('edit'))}</button><button class="btn btn-secondary" onclick="changePin('${c.id}')">${esc(passwordLabel)}</button><button class="btn ${c.is_active!==false?'btn-danger':'btn-primary'}" onclick="toggleCustomerStatus('${c.id}',${c.is_active===false})">${esc(toggleLabel)}</button></td></tr>`;
+   return `<tr><td><span class="click-link mono customer-username" onclick="openCustomerProfile('${c.id}')">${esc(customerUsername(c))}</span></td><td><span class="click-link" onclick="openCustomerProfile('${c.id}')">${esc(c.full_name||'-')}</span></td><td>${esc(c.phone||'-')}</td><td>${esc(c.id_number||'-')}</td><td><button type="button" class="active-loan-count ${activeLoans?'has-loans':''}" onclick="openCustomerActiveLoans('${c.id}')" ${activeLoans?'':'disabled'}>${activeLoans}</button></td><td><span class="badge ${c.is_active!==false?'ok':'danger'}">${esc(statusLabel)}</span></td><td class="actions"><button class="btn btn-secondary" onclick="openCustomerProfile('${c.id}')">${esc(viewLabel)}</button><button class="btn btn-secondary" onclick="openCustomer('${c.id}')">${esc(v11t('edit'))}</button><button class="btn btn-secondary" onclick="changePin('${c.id}')">${esc(passwordLabel)}</button><button class="btn ${c.is_active!==false?'btn-danger':'btn-primary'}" onclick="toggleCustomerStatus('${c.id}',${c.is_active===false})">${esc(toggleLabel)}</button></td></tr>`;
   }).join('')||`<tr><td colspan="7" class="muted">${esc(v10t('noRecords'))}</td></tr>`;
 }
+
+window.openCustomerActiveLoans=function(customerId){
+ const c=state.customers.find(x=>String(x.id)===String(customerId));
+ const loans=(state.loans||[]).filter(l=>String(l.customer_id)===String(customerId)&&String(l.status||'').toLowerCase()==='active');
+ const title=SWK_LANG.current==='zh'?'进行中的贷款':SWK_LANG.current==='ms'?'Pinjaman Aktif':'Active Loans';
+ const empty=SWK_LANG.current==='zh'?'目前没有进行中的贷款。':SWK_LANG.current==='ms'?'Tiada pinjaman aktif pada masa ini.':'There are no active loans.';
+ const view=SWK_LANG.current==='zh'?'查看贷款':SWK_LANG.current==='ms'?'Lihat Pinjaman':'View Loan';
+ const principal=SWK_LANG.current==='zh'?'本金':SWK_LANG.current==='ms'?'Pokok':'Principal';
+ const settlement=SWK_LANG.current==='zh'?'清账金额':SWK_LANG.current==='ms'?'Jumlah Penyelesaian':'Settlement';
+ const due=SWK_LANG.current==='zh'?'到期日期':SWK_LANG.current==='ms'?'Tarikh Matang':'Due Date';
+ const cards=loans.map(l=>`<article class="customer-active-loan-card"><div><h3>${esc(canonicalLoanId(l.loan_id))}</h3><p><span>${principal}</span><strong>${money(l.principal)}</strong></p><p><span>${settlement}</span><strong>${money(l.settlement_amount)}</strong></p><p><span>${due}</span><strong>${date(l.due_date)}</strong></p></div><button class="btn btn-primary" onclick="closeModal();openLoan('${l.id}')">${view}</button></article>`).join('');
+ modal(`<div class="active-loans-modal-head"><div><h2>${esc(customerUsername(c))} · ${esc(c?.full_name||'')}</h2><p class="muted">${title}</p></div></div><div class="customer-active-loans-grid">${cards||`<p class="muted">${empty}</p>`}</div>`);
+};
+
 window.toggleCustomerStatus=async(id,enable)=>{
  if(!requirePerm('customers_edit'))return;
  const x=await sb.from('customers').update({is_active:!!enable,updated_at:new Date().toISOString()}).eq('id',id);

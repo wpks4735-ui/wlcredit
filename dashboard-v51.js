@@ -62,6 +62,7 @@
       </section>
     </div>`);
     initTopStatus();
+    initSidebarToggle();
     bind();
     const [a,b]=presetRange('thisMonth');setRange('stats',a,b);setRange('staff',a,b);
     renderAll();
@@ -83,7 +84,7 @@
         <button class="v51-status-item" data-v51-target="salary"><span class="v51-status-icon">▣</span><span>${t('工资','Salary','Gaji')}</span><b id="v51SalaryCount">0</b><span class="v51-mini-bell">🔔</span></button>
       </div>
       <div class="v51-header-tools">
-        <div class="v51-language"><button id="v51Globe" title="Language">🌐</button><select id="v51Lang"><option value="zh">简体中文</option><option value="en">English</option><option value="ms">Bahasa Melayu</option></select></div>
+        <div class="v51-tool-menu-wrap v51-language"><button id="v51Globe" title="Language" type="button">🌐</button><div id="v51LanguageMenu" class="v51-popover v51-language-menu hidden"><button type="button" data-v51-lang="zh"><span class="v51-lang-check"></span>简体中文</button><button type="button" data-v51-lang="en"><span class="v51-lang-check"></span>English</button><button type="button" data-v51-lang="ms"><span class="v51-lang-check"></span>Bahasa Melayu</button></div></div>
         <div class="v51-tool-menu-wrap">
           <button id="v51Sound" class="v51-round-tool" type="button" title="Sound">🔊</button>
           <div id="v51SoundMenu" class="v51-popover hidden">
@@ -100,19 +101,34 @@
         </div>
       </div>
     </div>`);
-    $('#v51Lang').value=lang();
+    updateLanguageMenu();
+  }
+  function initSidebarToggle(){
+    const app=document.getElementById('adminApp'),top=document.querySelector('.topbar'),btn=document.getElementById('mobileMenuBtn'),sidebar=document.getElementById('adminSidebar');
+    if(!app||!top||!btn||!sidebar||btn.dataset.v19Ready)return;
+    btn.dataset.v19Ready='1';
+    top.insertBefore(btn,top.firstChild);
+    const mobile=()=>window.matchMedia('(max-width:900px)').matches;
+    const applyDesktop=collapsed=>{document.body.classList.toggle('sidebar-collapsed',collapsed);btn.setAttribute('aria-expanded',String(!collapsed));btn.textContent='☰';localStorage.setItem('wl_sidebar_collapsed',collapsed?'1':'0')};
+    if(!mobile())applyDesktop(localStorage.getItem('wl_sidebar_collapsed')==='1');
+    btn.addEventListener('click',e=>{if(mobile())return;e.stopImmediatePropagation();applyDesktop(!document.body.classList.contains('sidebar-collapsed'))},true);
+    window.addEventListener('resize',()=>{if(!mobile())applyDesktop(localStorage.getItem('wl_sidebar_collapsed')==='1')});
   }
   function setRange(scope,a,b){$(`#v51${cap(scope)}From`).value=iso(a);$(`#v51${cap(scope)}To`).value=iso(b)}
   const cap=s=>s.charAt(0).toUpperCase()+s.slice(1);
   function getRange(scope){const a=$(`#v51${cap(scope)}From`)?.value,b=$(`#v51${cap(scope)}To`)?.value;return [startOfDay(a||new Date()),endOfDay(b||new Date())]}
   function bind(){
     document.addEventListener('click',e=>{
+      if(!e.target.closest('.v51-language'))$('#v51LanguageMenu')?.classList.add('hidden');
       const p=e.target.closest('.v51-preset');if(p){const [a,b]=presetRange(p.dataset.v51Range);setRange(p.dataset.v51Scope,a,b);if(p.dataset.v51Scope==='stats')renderStats();else renderStaff();return}
       const s=e.target.closest('.v51-status-item');if(s){navigateStatus(s.dataset.v51Target);return}
     });
     $('#v51StatsApply').onclick=renderStats;$('#v51StaffApply').onclick=renderStaff;
     $('#v51ExportCsv').onclick=()=>exportReport('csv');$('#v51ExportExcel').onclick=()=>exportReport('xls');
-    $('#v51Globe').onclick=()=>$('#v51Lang').focus();
+    const languageMenu=$('#v51LanguageMenu');
+    const updateLanguageMenu=window.updateLanguageMenu=()=>{$$('[data-v51-lang]',languageMenu).forEach(btn=>{btn.classList.toggle('active',btn.dataset.v51Lang===lang());const check=btn.querySelector('.v51-lang-check');if(check)check.textContent=btn.dataset.v51Lang===lang()?'✓':''})};
+    $('#v51Globe').onclick=e=>{e.stopPropagation();languageMenu.classList.toggle('hidden');$('#v51SoundMenu')?.classList.add('hidden');$('#v51ProfileMenu')?.classList.add('hidden');updateLanguageMenu()};
+    $$('[data-v51-lang]',languageMenu).forEach(btn=>btn.onclick=()=>{const value=btn.dataset.v51Lang;localStorage.setItem('wl_lang',value);const legacy=document.querySelector('.lang-select');if(legacy){legacy.value=value;legacy.dispatchEvent(new Event('change',{bubbles:true}))}else location.reload();languageMenu.classList.add('hidden')});
     const soundOn=()=>localStorage.getItem('wl_notification_sound')!=='0'&&localStorage.getItem('wl_notification_sound')!=='off';
     const refreshSoundIcon=()=>{$('#v51Sound').textContent=soundOn()?'🔊':'🔇'};
     refreshSoundIcon();
