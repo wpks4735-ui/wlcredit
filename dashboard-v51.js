@@ -65,6 +65,10 @@
     bind();
     const [a,b]=presetRange('thisMonth');setRange('stats',a,b);setRange('staff',a,b);
     renderAll();
+    // The dashboard structure can be ready before loadAll() finishes. Perform a short,
+    // bounded startup sync so the first real dataset is painted automatically even
+    // when the data-loaded event occurred just before this module attached its listener.
+    startInitialDataSync();
   }
   function presetButtons(scope){return [['today','今天','Today','Hari Ini'],['yesterday','昨天','Yesterday','Semalam'],['thisWeek','本周','This Week','Minggu Ini'],['lastWeek','上周','Last Week','Minggu Lepas'],['thisMonth','本月','This Month','Bulan Ini'],['lastMonth','上月','Last Month','Bulan Lepas']].map(x=>`<button class="v51-preset" data-v51-scope="${scope}" data-v51-range="${x[0]}">${t(x[1],x[2],x[3])}</button>`).join('')}
   function initTopStatus(){
@@ -216,5 +220,41 @@
     const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),5000);
   }
   function renderAll(){if(!$('#v51Dashboard'))return;renderCounts();renderStats();renderStaff()}
+  let initialSyncTimer=null;
+  function dataSignature(){
+    const s=S();
+    return [
+      s.staff?.user_id||s.staff?.id||'',
+      (s.customers||[]).length,
+      (s.loans||[]).length,
+      (s.repayments||[]).length,
+      (s.applications||[]).length,
+      (s.submissions||[]).length,
+      (s.staffList||[]).length,
+      (s.payroll||[]).length,
+      (s.salaryAdvances||[]).length
+    ].join('|');
+  }
+  function startInitialDataSync(){
+    if(initialSyncTimer)clearInterval(initialSyncTimer);
+    let attempts=0,last=dataSignature(),stableAfterData=0;
+    initialSyncTimer=setInterval(()=>{
+      attempts+=1;
+      const current=dataSignature();
+      const hasStaff=Boolean(S().staff);
+      if(current!==last||hasStaff){
+        renderAll();
+        stableAfterData=current===last?stableAfterData+1:0;
+        last=current;
+      }
+      // Stop after data has remained stable briefly, or after 12 seconds maximum.
+      if((hasStaff&&stableAfterData>=3)||attempts>=48){
+        clearInterval(initialSyncTimer);
+        initialSyncTimer=null;
+      }
+    },250);
+  }
+  document.addEventListener('wl:data-loaded',()=>{renderAll();startInitialDataSync()});
+  window.addEventListener('pageshow',()=>{renderAll();startInitialDataSync()});
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(initStructure,100));else setTimeout(initStructure,100);
 })();

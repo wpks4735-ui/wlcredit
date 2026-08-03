@@ -144,6 +144,14 @@ async function loadAll(){
  }
  rememberPendingAndNotify();
  renderAll();
+ // Notify separately loaded dashboard modules only after the fresh data has been assigned.
+ // This prevents the statistics page from staying at its initial zero placeholders
+ // until the user clicks somewhere on the page.
+ try{
+  document.dispatchEvent(new CustomEvent('wl:data-loaded',{detail:{loadedAt:Date.now()}}));
+ }catch(_){
+  document.dispatchEvent(new Event('wl:data-loaded'));
+ }
  if(loadErrors.length){
   const msg=(SWK_LANG.current==='zh'?'部分资料读取失败：':SWK_LANG.current==='ms'?'Sebahagian data gagal dimuatkan: ':'Some data could not be loaded: ')+loadErrors.slice(0,3).join(' | ');
   toast(msg,true);
