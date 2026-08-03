@@ -3,7 +3,7 @@
   const $=(s,r=document)=>r.querySelector(s);
   const $$=(s,r=document)=>Array.from(r.querySelectorAll(s));
   const S=()=>window.state||window.__wlState||{};
-  const lang=()=>window.SWK_LANG?.current||localStorage.getItem('swk_lang')||localStorage.getItem('wl_lang')||'zh';
+  const lang=()=>window.SWK_LANG?.current||localStorage.getItem('wl_lang')||'zh';
   const t=(zh,en,ms)=>lang()==='zh'?zh:lang()==='ms'?ms:en;
   const num=v=>Number(v||0)||0;
   const money=v=>`MYR ${num(v).toLocaleString('en-MY',{minimumFractionDigits:2,maximumFractionDigits:2})}`;
@@ -314,15 +314,8 @@
   'use strict';
   const q=(s,r=document)=>r.querySelector(s);
   const qa=(s,r=document)=>Array.from(r.querySelectorAll(s));
-  const lang=()=>window.SWK_LANG?.current||localStorage.getItem('swk_lang')||localStorage.getItem('wl_lang')||'zh';
+  const lang=()=>window.SWK_LANG?.current||localStorage.getItem('wl_lang')||'zh';
   const tr=(zh,en,ms)=>lang()==='zh'?zh:lang()==='ms'?ms:en;
-  // Migrate the older header language key to the canonical i18n key.
-  const legacyLanguage=localStorage.getItem('wl_lang');
-  const canonicalLanguage=localStorage.getItem('swk_lang');
-  if(legacyLanguage&&['zh','en','ms'].includes(legacyLanguage)&&legacyLanguage!==canonicalLanguage){
-    localStorage.setItem('swk_lang',legacyLanguage);
-    if(window.SWK_LANG)window.SWK_LANG.current=legacyLanguage;
-  }
   const closeMenus=()=>{
     q('#v51LanguageMenu')?.classList.add('hidden');
     q('#v51SoundMenu')?.classList.add('hidden');
@@ -388,19 +381,7 @@
     const target=e.target;
     if(target.closest('#mobileMenuBtn')){e.preventDefault();e.stopImmediatePropagation();toggleSidebar();return}
     if(target.closest('#v51Globe')){e.preventDefault();e.stopImmediatePropagation();const m=q('#v51LanguageMenu');const show=m?.classList.contains('hidden');closeMenus();if(show)m?.classList.remove('hidden');updateLanguageChecks();return}
-    const lb=target.closest('[data-v51-lang]');if(lb){
-      e.preventDefault();e.stopImmediatePropagation();
-      const value=lb.dataset.v51Lang;
-      localStorage.setItem('swk_lang',value);
-      localStorage.setItem('wl_lang',value);
-      if(window.SWK_LANG&&typeof window.SWK_LANG.set==='function'){
-        window.SWK_LANG.set(value);
-      }else{
-        const legacy=qa('.lang-select');
-        legacy.forEach(select=>{select.value=value;select.dispatchEvent(new Event('change',{bubbles:true}))});
-      }
-      updateLanguageChecks();closeMenus();return
-    }
+    const lb=target.closest('[data-v51-lang]');if(lb){e.preventDefault();e.stopImmediatePropagation();const value=lb.dataset.v51Lang;localStorage.setItem('wl_lang',value);const legacy=q('.lang-select');if(legacy){legacy.value=value;legacy.dispatchEvent(new Event('change',{bubbles:true}))}else location.reload();closeMenus();return}
     if(target.closest('#v51Sound')){e.preventDefault();e.stopImmediatePropagation();const m=q('#v51SoundMenu');const show=m?.classList.contains('hidden');closeMenus();if(show)m?.classList.remove('hidden');return}
     const sb=target.closest('[data-v51-sound]');if(sb){e.preventDefault();e.stopImmediatePropagation();setSound(sb.dataset.v51Sound==='on');closeMenus();return}
     if(target.closest('#v51ProfileBtn')){e.preventDefault();e.stopImmediatePropagation();const m=q('#v51ProfileMenu');const show=m?.classList.contains('hidden');closeMenus();if(show)m?.classList.remove('hidden');return}

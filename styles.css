@@ -630,33 +630,3 @@ body.sidebar-collapsed #adminSidebar>*{visibility:hidden!important}
   #adminApp .v51-status-cluster{height:40px!important}
   #adminApp .v51-status-item{height:38px!important;min-width:100px!important}
 }
-
-/* ===== V21.2 reliable language selector ===== */
-#adminApp #v51LanguageMenu{
-  min-width:210px!important;
-  padding:8px!important;
-  border-radius:12px!important;
-  background:#fff!important;
-  box-shadow:0 14px 34px rgba(8,30,55,.22)!important;
-  overflow:hidden!important;
-}
-#adminApp #v51LanguageMenu button{
-  width:100%!important;
-  min-height:42px!important;
-  padding:9px 12px!important;
-  display:grid!important;
-  grid-template-columns:22px minmax(0,1fr)!important;
-  align-items:center!important;
-  gap:8px!important;
-  border:0!important;
-  border-radius:8px!important;
-  color:#17324f!important;
-  background:#fff!important;
-  font-size:15px!important;
-  font-weight:700!important;
-  text-align:left!important;
-  white-space:nowrap!important;
-}
-#adminApp #v51LanguageMenu button:hover{background:#f0f6fd!important}
-#adminApp #v51LanguageMenu button.active{background:#e9f3ff!important;color:#075faf!important}
-#adminApp #v51LanguageMenu .v51-lang-check{display:inline-block!important;width:22px!important;color:#0877d1!important;font-weight:900!important}
