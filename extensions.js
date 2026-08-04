@@ -1675,7 +1675,7 @@ async function openDisbursementProof(id){
 
 async function loadFinanceApps(){
  const c=db();if(!c?.from)return [];
- const r=await c.from('loan_applications').select('*').in('status',['pending_disbursement','finance_disbursed']).order('submitted_to_finance_at',{ascending:true});
+ const r=await c.from('loan_applications').select('*').in('status',['pending_disbursement','finance_disbursed']).order('submitted_to_finance_at',{ascending:false});
  return r.error?[]:(r.data||[]);
 }
 async function renderFinanceApplications(){

@@ -19,7 +19,7 @@
     if(syncing||!isFinance()||!window.sb?.from)return;
     syncing=true;
     try{
-      const r=await window.sb.from('loan_applications').select('*').order('submitted_to_finance_at',{ascending:true});
+      const r=await window.sb.from('loan_applications').select('*').order('submitted_to_finance_at',{ascending:false});
       if(r.error)throw r.error;
       const list=r.data||[];
       const pending=list.filter(a=>norm(a.status)==='pending_disbursement');
@@ -51,7 +51,7 @@
     }catch(e){console.warn('V24.6 realtime subscribe failed',e)}
     clearInterval(pollTimer);
     // Fast fallback in case Postgres Realtime publication or browser connectivity is delayed.
-    pollTimer=setInterval(()=>syncFinanceQueue({notify:true}),3000);
+    pollTimer=setInterval(()=>syncFinanceQueue({notify:true}),60000);
   }
 
   function waitForAuth(){

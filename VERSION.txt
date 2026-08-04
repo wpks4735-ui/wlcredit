@@ -1,1 +1,2 @@
-V24.6
+WL Credit V24.7
+Stable finance ordering, inline disbursement proof, existing-customer loan activation
