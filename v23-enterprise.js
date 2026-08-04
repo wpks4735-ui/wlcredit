@@ -76,7 +76,9 @@
     }
     body.innerHTML=rows.map(c=>{
       const n=activeLoansFor(c.id).length,enabled=c.is_active!==false;
-      return `<tr><td><button class="v23-link-button mono" onclick="openCustomerProfile('${E(c.id)}')">${E(canonicalUsername(c))}</button></td><td><button class="v23-link-button" onclick="openCustomerProfile('${E(c.id)}')">${E(c.full_name||'-')}</button></td><td>${E(c.phone||'-')}</td><td>${E(c.id_number||'-')}</td><td><button class="v23-loan-count ${n?'has-loans':''}" ${n?`data-v23-active-loans="${E(c.id)}"`:'disabled'}>${n}</button></td><td><span class="badge ${enabled?'ok':'danger'}">${enabled?T('启用','Enabled','Aktif'):T('停用','Disabled','Dinyahaktifkan')}</span></td><td class="actions"><button class="btn btn-secondary" onclick="openCustomerProfile('${E(c.id)}')">${T('查看','View','Lihat')}</button><button class="btn btn-secondary" onclick="openCustomer('${E(c.id)}')">${T('编辑','Edit','Sunting')}</button><button class="btn btn-secondary" onclick="changePin('${E(c.id)}')">${T('修改密码','Change Password','Tukar Kata Laluan')}</button></td></tr>`;
+      const transferAllowed=typeof window.canTransferCustomer==='function' ? window.canTransferCustomer() : ['finance','super_admin','superadmin'].includes(String(window.state?.staff?.role||'').toLowerCase().replace(/[\s-]+/g,'_'));
+      const transferButton=transferAllowed?`<button class="btn btn-secondary" onclick="v17TransferCustomer('${E(c.id)}')">${T('转移客服','Transfer Staff','Pindah Staf')}</button>`:'';
+      return `<tr><td><button class="v23-link-button mono" onclick="openCustomerProfile('${E(c.id)}')">${E(canonicalUsername(c))}</button></td><td><button class="v23-link-button" onclick="openCustomerProfile('${E(c.id)}')">${E(c.full_name||'-')}</button></td><td>${E(c.phone||'-')}</td><td>${E(c.id_number||'-')}</td><td><button class="v23-loan-count ${n?'has-loans':''}" ${n?`data-v23-active-loans="${E(c.id)}"`:'disabled'}>${n}</button></td><td><span class="badge ${enabled?'ok':'danger'}">${enabled?T('启用','Enabled','Aktif'):T('停用','Disabled','Dinyahaktifkan')}</span></td><td class="actions"><button class="btn btn-secondary" onclick="openCustomerProfile('${E(c.id)}')">${T('查看','View','Lihat')}</button><button class="btn btn-secondary" onclick="openCustomer('${E(c.id)}')">${T('编辑','Edit','Sunting')}</button><button class="btn btn-secondary" onclick="changePin('${E(c.id)}')">${T('修改密码','Change Password','Tukar Kata Laluan')}</button>${transferButton}</td></tr>`;
     }).join('')||`<tr><td colspan="7" class="muted">${T('没有记录','No records','Tiada rekod')}</td></tr>`;
   }
 
@@ -115,4 +117,27 @@
   });
   document.addEventListener('change',e=>{if(e.target?.matches('.lang-select'))setTimeout(()=>{renderCustomersV23();renderLoansV23();applyLabels()},120)});
   document.addEventListener('DOMContentLoaded',()=>setTimeout(()=>{renderCustomersV23();renderLoansV23();applyLabels()},1000));
+
+  // Add the same transfer action inside the customer detail modal. The list renderer above
+  // is the primary entry point; this secondary entry keeps the action available after opening a customer.
+  const previousOpenCustomerProfile=window.openCustomerProfile;
+  if(typeof previousOpenCustomerProfile==='function'){
+    window.openCustomerProfile=function(customerId){
+      const result=previousOpenCustomerProfile.apply(this,arguments);
+      setTimeout(()=>{
+        const allowed=typeof window.canTransferCustomer==='function' ? window.canTransferCustomer() : ['finance','super_admin','superadmin'].includes(String(window.state?.staff?.role||'').toLowerCase().replace(/[\s-]+/g,'_'));
+        if(!allowed||typeof window.v17TransferCustomer!=='function')return;
+        const host=document.querySelector('#modalBody');
+        if(!host||host.querySelector('[data-v24-transfer-customer]'))return;
+        const bar=document.createElement('div');
+        bar.className='actions';
+        bar.style.marginTop='16px';
+        bar.dataset.v24TransferCustomer='1';
+        bar.innerHTML=`<button class="btn btn-secondary" type="button">${T('转移客服','Transfer Staff','Pindah Staf')}</button>`;
+        bar.querySelector('button').onclick=()=>window.v17TransferCustomer(customerId);
+        host.appendChild(bar);
+      },80);
+      return result;
+    };
+  }
 })();
