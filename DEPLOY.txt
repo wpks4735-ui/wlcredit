@@ -1,6 +1,13 @@
-WL Credit V21.1 Compact Header
+WL Credit V24.4.1 deployment
 
-V24.1 Customer Transfer
-1. Run V24.1-CUSTOMER-STAFF-TRANSFER.sql in Supabase SQL Editor.
-2. Upload all website files to GitHub/Cloudflare.
-3. Finance and Super Admin can use Customers > Transfer Staff.
+1. In Supabase SQL Editor, run:
+   V24.4.1-CUSTOMER-BANK-LEGACY-ALIASES.sql
+
+2. Upload/overwrite the website files in GitHub.
+
+3. Wait for Cloudflare Pages deployment, then close old admin tabs and reopen /admin.
+
+This patch fixes:
+- record "c" has no field "account_name"
+- legacy RPCs reading account_name/account_number
+- newer pages saving bank_account_name/bank_account_number
