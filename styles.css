@@ -651,3 +651,5 @@ body.sidebar-collapsed #adminSidebar>*{visibility:hidden!important}
 #todayWork .table-wrap{width:100%;max-width:100%;overflow-x:auto}
 #todayWork .table{min-width:760px;width:100%}
 #todayWork{overflow:visible}
+/* V24 repayment cycle */
+.v24-cycle-box{margin:14px 0;padding:16px;border:1px solid #dbe6f2;border-radius:14px;background:#f8fbff}.v24-cycle-box h3{margin:0 0 12px}.v24-auto-next{margin:6px 0 0;color:#315a86}
