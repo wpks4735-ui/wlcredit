@@ -909,20 +909,19 @@ async function enter(){const {data:{user}}=await sb.auth.getUser(),x=await sb.fr
 state.customerOwnerFilter = state.customerOwnerFilter || 'all';
 
 function v17ServiceStaff(){
-  return (state.staffList||[]).filter(s=>s.is_active!==false && ['customer_service','finance'].includes(String(s.role||'')));
+  return (state.staffList||[]).filter(s=>s.is_active!==false && String(s.role||'')==='customer_service');
 }
 function v17StaffLabel(userId){
   if(!userId)return SWK_LANG.current==='zh'?'未分配':SWK_LANG.current==='ms'?'Belum Ditugaskan':'Unassigned';
-  const list=v17ServiceStaff();
-  const i=list.findIndex(s=>String(s.user_id)===String(userId));
   const s=(state.staffList||[]).find(x=>String(x.user_id)===String(userId));
-  if(s?.role==='super_admin')return v10t('superAdmin');
-  const n=i>=0?i+1:'-';
-  const prefix=SWK_LANG.current==='zh'?'客服':SWK_LANG.current==='ms'?'Khidmat Pelanggan ':'Customer Service ';
-  return `${prefix}${n}`;
+  if(!s)return '-';
+  if(s.role==='super_admin')return String(s.full_name||s.username||v10t('superAdmin'));
+  const base=String(s.full_name||s.username||s.staff_code||s.user_id||'-').trim();
+  const duplicateCount=(state.staffList||[]).filter(x=>x.is_active!==false && String(x.role||'')==='customer_service' && String(x.full_name||x.username||x.staff_code||x.user_id||'-').trim().toLowerCase()===base.toLowerCase()).length;
+  return duplicateCount>1 && s.staff_code ? `${base} · ${s.staff_code}` : base;
 }
 function v17StaffDisplay(s){
-  return `${v17StaffLabel(s.user_id)}${s.full_name?` · ${s.full_name}`:''}`;
+  return v17StaffLabel(s?.user_id);
 }
 function v17OwnerFilters(){
   if(!isSuperAdmin())return '';

@@ -14,7 +14,7 @@ const tx=k=>(T[SWK_LANG.current]||T.en)[k]||k;
 const n=v=>Number(v||0);
 const d10=v=>String(v||'').slice(0,10);
 const inDates=(v,from,to)=>{const d=d10(v);return !!d&&(!from||d>=from)&&(!to||d<=to)};
-const staffName=s=>s?.staff_label||s?.full_name||s?.username||'-';
+const staffName=s=>s?.full_name||s?.username||s?.staff_code||'-';
 function reportStaff(){return (state.staffList||[]).filter(s=>['customer_service','collector','supervisor','manager'].includes(String(s.role||''))&&s.is_active!==false)}
 function selectedStaffId(){const el=document.querySelector('#reportStaffFilter');return isSuperAdmin()?(el?.value||'all'):String(state.staff?.user_id||'')}
 function ownerOfCustomer(c){return String(c?.owner_staff_id||c?.assigned_staff_id||'')}
@@ -36,7 +36,7 @@ function dataFor(from,to,id){
  return {from,to,id,customers,loans,repayments,expenses,income,payroll,active,overdue,completed,disbursed,collected,expenseTotal,incomeTotal,payrollTotal,net:collected+incomeTotal-disbursed-payrollTotal-expenseTotal};
 }
 function staffRows(from,to){
- const rows=reportStaff().map((s,i)=>({s,label:s.staff_label||`客服${i+1}`,...dataFor(from,to,String(s.user_id))}));
+ const rows=reportStaff().map(s=>({s,label:staffName(s),...dataFor(from,to,String(s.user_id))}));
  const un=dataFor(from,to,'');if(un.customers.length||un.loans.length)rows.push({s:null,label:tx('unassigned'),...un});return rows;
 }
 function setLabels(){
@@ -45,8 +45,8 @@ function setLabels(){
 }
 function populate(){
  const sel=document.querySelector('#reportStaffFilter');if(!sel)return;const val=sel.value||'all';
- if(isSuperAdmin()){sel.disabled=false;sel.innerHTML=`<option value="all">${tx('all')}</option>`+reportStaff().map((s,i)=>`<option value="${esc(s.user_id)}">${esc(s.staff_label||`客服${i+1}`)} · ${esc(staffName(s))}</option>`).join('')+`<option value="">${tx('unassigned')}</option>`;sel.value=[...sel.options].some(o=>o.value===val)?val:'all'}
- else{sel.innerHTML=`<option value="${esc(state.staff.user_id)}">${esc(state.staff.staff_label||staffName(state.staff))}</option>`;sel.disabled=true}
+ if(isSuperAdmin()){sel.disabled=false;sel.innerHTML=`<option value="all">${tx('all')}</option>`+reportStaff().map(s=>`<option value="${esc(s.user_id)}">${esc(staffName(s))}</option>`).join('')+`<option value="">${tx('unassigned')}</option>`;sel.value=[...sel.options].some(o=>o.value===val)?val:'all'}
+ else{sel.innerHTML=`<option value="${esc(state.staff.user_id)}">${esc(staffName(state.staff))}</option>`;sel.disabled=true}
 }
 function renderV18(){
  const host=document.querySelector('#reportPreview');if(!host)return;setLabels();populate();
