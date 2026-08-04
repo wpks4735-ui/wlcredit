@@ -1623,7 +1623,7 @@ window.v36OpenReview=async id=>{
   <div class="card"><h3>${L('申请资料','Loan request','Permohonan pinjaman')}</h3>${row(L('申请金额','Requested amount','Jumlah dipohon'),money(a.requested_amount))}${row(L('用途','Purpose','Tujuan'),a.purpose)}</div>
  </div>
  <div class="card" style="margin-top:16px"><h3>${L('身份证与申请文件','Identity and application documents','Dokumen pengenalan dan permohonan')}</h3><div class="document-actions">${docsHtml(a)}</div></div>
- ${financeDone?`<div class="card" style="margin-top:16px"><h3>${L('财务出款资料','Finance disbursement details','Butiran pengeluaran kewangan')}</h3>${row(L('出款金额','Amount','Jumlah'),money(a.approved_principal))}${row(L('参考号','Reference','Rujukan'),a.finance_reference)}${row(L('出款时间','Transferred at','Masa pindahan'),a.finance_disbursed_at)}${row(L('备注','Note','Catatan'),a.finance_note)}</div>`:''}
+ ${financeDone?`<div class="card" style="margin-top:16px"><h3>${L('财务出款资料','Finance disbursement details','Butiran pengeluaran kewangan')}</h3>${row(L('出款金额','Amount','Jumlah'),money(a.approved_principal))}${row(L('参考号','Reference','Rujukan'),a.finance_reference)}${row(L('出款时间','Transferred at','Masa pindahan'),a.finance_disbursed_at)}${row(L('备注','Note','Catatan'),a.finance_note)}${a.finance_proof_path?`<div class="detail-row"><span>${L('出款截图','Disbursement proof','Bukti pengeluaran')}</span><button type="button" class="btn btn-secondary" data-v36-proof="${esc(a.id)}">${L('查看／下载','View / Download','Lihat / Muat Turun')}</button></div>`:''}</div>`:''}
  <div class="tabs" style="margin-top:16px">
   ${canSubmit?`<button type="button" class="btn btn-primary" data-v36-submit-finance="${esc(a.id)}">${L('提交财务出款','Submit to Finance','Hantar kepada Kewangan')}</button>`:''}
   ${financeDone&&own?`<button type="button" class="btn btn-primary" data-v36-final-approve="${esc(a.id)}">${L('确认通过并建立账号','Confirm & Create Account','Sahkan & Cipta Akaun')}</button>`:''}
@@ -1666,6 +1666,12 @@ async function openDoc(id,key){
  const a=appById(id);const path=a?.document_paths?.[key];if(!path)return toast(L('找不到文件','Document not found','Dokumen tidak ditemui'),true);
  const r=await db().storage.from('loan-applications').createSignedUrl(path,600);if(r.error)return toast(r.error.message,true);window.open(r.data.signedUrl,'_blank','noopener');
 }
+async function openDisbursementProof(id){
+ const a=appById(id)||(await db().from('loan_applications').select('finance_proof_path,finance_proof_name').eq('id',id).maybeSingle()).data;
+ const path=a?.finance_proof_path;if(!path)return toast(L('找不到出款截图','Disbursement proof not found','Bukti pengeluaran tidak ditemui'),true);
+ const r=await db().storage.from('disbursement-proofs').createSignedUrl(path,600,{download:a.finance_proof_name||true});
+ if(r.error)return toast(r.error.message,true);window.open(r.data.signedUrl,'_blank','noopener');
+}
 
 async function loadFinanceApps(){
  const c=db();if(!c?.from)return [];
@@ -1682,10 +1688,16 @@ async function openFinanceDisbursement(id){
  const c=db();const a=appById(id)||(await c.from('loan_applications').select('*').eq('id',id).maybeSingle()).data;
  const banks=(await c.from('company_bank_accounts').select('*').eq('is_enabled',true).eq('can_disburse',true)).data||[];
  if(!banks.length)return toast(L('没有可用的出款银行','No disbursement bank available','Tiada bank pengeluaran'),true);
- window.modal?.(`<h2>${L('财务出款','Finance Disbursement','Pengeluaran Kewangan')}</h2><p>${esc(a.full_name||'-')} · ${money(a.approved_principal)}</p><div class="card" style="margin-bottom:14px">${row(L('客户银行','Customer bank','Bank pelanggan'),a.bank_name||a.customer_bank_name)}${row(L('户口姓名','Account name','Nama akaun'),a.bank_account_name||a.account_name)}${row(L('户口号码','Account number','Nombor akaun'),a.bank_account_number||a.account_number)}</div><form id="v36FinanceForm"><div class="field"><label>${L('公司出款银行','Company bank','Bank syarikat')}</label><select name="bank">${banks.map(b=>`<option value="${esc(b.id)}">${esc(b.bank_name)} · ${esc(b.account_number)}</option>`).join('')}</select></div><div class="field"><label>${L('出款时间','Transfer time','Masa pindahan')}</label><input name="at" type="datetime-local" required></div><div class="field"><label>${L('参考号','Reference','Rujukan')}</label><input name="ref"></div><div class="field"><label>${L('备注','Note','Catatan')}</label><textarea name="note"></textarea></div><button class="btn btn-primary">${L('确认已出款','Confirm disbursed','Sahkan telah keluar')}</button></form>`);
+ window.modal?.(`<h2>${L('财务出款','Finance Disbursement','Pengeluaran Kewangan')}</h2><p>${esc(a.full_name||'-')} · ${money(a.approved_principal)}</p><div class="card" style="margin-bottom:14px">${row(L('客户银行','Customer bank','Bank pelanggan'),a.bank_name||a.customer_bank_name)}${row(L('户口姓名','Account name','Nama akaun'),a.bank_account_name||a.account_name)}${row(L('户口号码','Account number','Nombor akaun'),a.bank_account_number||a.account_number)}</div><form id="v36FinanceForm"><div class="field"><label>${L('公司出款银行','Company bank','Bank syarikat')}</label><select name="bank">${banks.map(b=>`<option value="${esc(b.id)}">${esc(b.bank_name)} · ${esc(b.account_number)}</option>`).join('')}</select></div><div class="field"><label>${L('出款时间','Transfer time','Masa pindahan')}</label><input name="at" type="datetime-local" required></div><div class="field"><label>${L('参考号','Reference','Rujukan')}</label><input name="ref"></div><div class="field"><label>${L('出款截图','Disbursement screenshot','Tangkapan skrin pengeluaran')}</label><input name="proof" type="file" accept="image/png,image/jpeg,image/webp,application/pdf" required><small class="muted">${L('必须上传，客服之后可以查看和下载发送给客户。','Required. Customer service can view and download it for the customer.','Wajib. Khidmat pelanggan boleh melihat dan memuat turun untuk pelanggan.')}</small></div><div class="field"><label>${L('备注','Note','Catatan')}</label><textarea name="note"></textarea></div><button class="btn btn-primary">${L('确认已出款','Confirm disbursed','Sahkan telah keluar')}</button></form>`);
  const f=$('#v36FinanceForm');f.elements.at.value=new Date(Date.now()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,16);
  f.onsubmit=async e=>{e.preventDefault();const d=new FormData(f),at=new Date(d.get('at')).toISOString();
-  const u=await c.from('loan_applications').update({status:'finance_disbursed',finance_bank_account_id:d.get('bank'),finance_reference:d.get('ref')||null,finance_note:d.get('note')||null,finance_disbursed_at:at,finance_disbursed_by:state().staff.user_id}).eq('id',id).eq('status','pending_disbursement').select('id').maybeSingle();
+  const proof=d.get('proof');
+  if(!(proof instanceof File)||!proof.size)return toast(L('请上传出款截图','Please upload the disbursement screenshot','Sila muat naik tangkapan skrin pengeluaran'),true);
+  const safeName=String(proof.name||'proof').replace(/[^a-zA-Z0-9._-]+/g,'-');
+  const proofPath=`${id}/${Date.now()}-${safeName}`;
+  const up=await c.storage.from('disbursement-proofs').upload(proofPath,proof,{cacheControl:'3600',upsert:false,contentType:proof.type||undefined});
+  if(up.error)return toast(up.error.message,true);
+  const u=await c.from('loan_applications').update({status:'finance_disbursed',finance_bank_account_id:d.get('bank'),finance_reference:d.get('ref')||null,finance_note:d.get('note')||null,finance_disbursed_at:at,finance_disbursed_by:state().staff.user_id,finance_proof_path:proofPath,finance_proof_name:proof.name||safeName}).eq('id',id).eq('status','pending_disbursement').select('id').maybeSingle();
   if(u.error||!u.data)return toast(u.error?.message||L('出款更新失败','Disbursement update failed','Kemas kini pengeluaran gagal'),true);
   const tx=await c.from('finance_transactions').insert({bank_account_id:d.get('bank'),transaction_type:'outflow',source_type:'application_disbursement',source_id:id,amount:Number(a.approved_principal||0),transaction_at:at,reference_no:d.get('ref')||null,note:d.get('note')||null,created_by:state().staff.user_id});
   if(tx.error)toast(tx.error.message,true);
@@ -1741,6 +1753,7 @@ document.addEventListener('click',e=>{
  const sf=e.target.closest('[data-v36-submit-finance]');if(sf){e.preventDefault();openSubmitFinance(sf.dataset.v36SubmitFinance);return}
  const fa=e.target.closest('[data-v36-final-approve]');if(fa){e.preventDefault();openFinalApprove(fa.dataset.v36FinalApprove);return}
  const doc=e.target.closest('[data-v36-doc]');if(doc){e.preventDefault();openDoc(doc.dataset.appId,doc.dataset.v36Doc);return}
+ const proof=e.target.closest('[data-v36-proof]');if(proof){e.preventDefault();openDisbursementProof(proof.dataset.v36Proof);return}
  const fd=e.target.closest('[data-v36-finance-disburse]');if(fd){e.preventDefault();openFinanceDisbursement(fd.dataset.v36FinanceDisburse);return}
  const tab=e.target.closest('[data-pf-status]');if(tab){e.preventDefault();pendingFinanceFilter=tab.dataset.pfStatus;$$('#pendingFinanceTabs [data-pf-status]').forEach(b=>{b.classList.toggle('btn-primary',b===tab);b.classList.toggle('btn-secondary',b!==tab)});renderPendingFinance();return}
 },true);

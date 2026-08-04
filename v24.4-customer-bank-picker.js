@@ -89,35 +89,7 @@
     };
   }
 
-  // The legacy V41.5 new-loan dialog locks the customer. Add a selector step first,
-  // then continue into the existing pending-finance workflow with the chosen customer.
-  const existingNewLoan=window.openLoan;
-  if(typeof existingNewLoan==='function'){
-    window.openLoan=function(id,customerId){
-      if(id)return existingNewLoan.apply(this,arguments);
-      const customers=(st().customers||[]).filter(c=>c.is_active!==false);
-      if(!customers.length)return window.toast?.(T('没有可用客户','No available customers','Tiada pelanggan tersedia'),true);
-      const initial=String(customerId||customers[0].id);
-      window.modal?.(`<h2>${T('选择客户建立新贷款','Select Customer for New Loan','Pilih Pelanggan untuk Pinjaman Baharu')}</h2>
-        <div class="field"><label>${T('搜索客户（账号／姓名／电话／IC）','Search customer (account / name / phone / IC)','Cari pelanggan (akaun / nama / telefon / IC)')}</label><input id="v244LoanCustomerSearch" type="search" autocomplete="off"></div>
-        <div class="field"><label>${T('客户','Customer','Pelanggan')}</label><select id="v244LoanCustomerSelect" size="7"></select></div>
-        <div id="v244LoanCustomerBank" class="card" style="margin:12px 0"></div>
-        <p><button id="v244ContinueLoan" class="btn btn-primary">${T('继续新增贷款','Continue','Teruskan')}</button> <button type="button" class="btn btn-secondary" onclick="closeModal()">${T('取消','Cancel','Batal')}</button></p>`);
-      const search=$('#v244LoanCustomerSearch'),select=$('#v244LoanCustomerSelect'),bank=$('#v244LoanCustomerBank');
-      const render=()=>{
-        const q=String(search.value||'').trim().toLowerCase();
-        const list=customers.filter(c=>[username(c),c.full_name,c.phone,c.id_number].join(' ').toLowerCase().includes(q));
-        const keep=select.value||initial;
-        select.innerHTML=list.map(c=>`<option value="${esc(c.id)}" ${String(c.id)===String(keep)?'selected':''}>${esc(username(c))} — ${esc(c.full_name||'-')} — ${esc(c.phone||'-')}</option>`).join('');
-        if(!select.value&&list.length)select.value=String(list[0].id);
-        showBank();
-      };
-      const showBank=()=>{
-        const c=customers.find(x=>String(x.id)===String(select.value));
-        bank.innerHTML=c?`<strong>${esc(username(c))} · ${esc(c.full_name||'-')}</strong><div class="kv"><span>${T('银行','Bank','Bank')}</span><strong>${esc(c.bank_name||'-')}</strong></div><div class="kv"><span>${T('户名','Account Name','Nama Akaun')}</span><strong>${esc(c.bank_account_name||'-')}</strong></div><div class="kv"><span>${T('账号','Account Number','Nombor Akaun')}</span><strong>${esc(c.bank_account_number||'-')}</strong></div>`:'';
-      };
-      search.addEventListener('input',render);select.addEventListener('change',showBank);render();
-      $('#v244ContinueLoan').onclick=()=>{const chosen=select.value;if(!chosen)return window.toast?.(T('请选择客户','Please select a customer','Sila pilih pelanggan'),true);window.closeModal?.();setTimeout(()=>existingNewLoan(null,chosen),0)};
-    };
-  }
+  // V24.5: use the main openLoan dialog directly. It already provides a searchable
+  // customer selector, keeps a customer preselected when opened from a profile, and
+  // still allows staff to choose another customer. Do not wrap it with a second modal.
 })();
