@@ -1,4 +1,4 @@
-const CACHE='wl-credit-v24-2-transfer-visible';
+const CACHE='wl-credit-v25-1-loan-realtime';
 self.addEventListener('install',event=>self.skipWaiting());
 self.addEventListener('activate',event=>event.waitUntil((async()=>{for(const k of await caches.keys())await caches.delete(k);await self.clients.claim();})()));
 self.addEventListener('fetch',event=>{
