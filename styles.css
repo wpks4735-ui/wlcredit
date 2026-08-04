@@ -653,3 +653,10 @@ body.sidebar-collapsed #adminSidebar>*{visibility:hidden!important}
 #todayWork{overflow:visible}
 /* V24 repayment cycle */
 .v24-cycle-box{margin:14px 0;padding:16px;border:1px solid #dbe6f2;border-radius:14px;background:#f8fbff}.v24-cycle-box h3{margin:0 0 12px}.v24-auto-next{margin:6px 0 0;color:#315a86}
+
+/* V24.4 customer bank and document status */
+.v244-personal-bank{margin-top:18px;padding-top:14px;border-top:1px solid #d9e3ef}
+.v244-required-docs{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:14px 0}
+.v244-doc-status{border:1px solid #dbe5ef;border-radius:12px;padding:12px;background:#f8fafc;display:flex;flex-direction:column;gap:5px}
+.v244-doc-status.ok{background:#effaf5;border-color:#bfe7d3}.v244-doc-status.missing{background:#fff7f7;border-color:#f2cccc}
+.v244-doc-status span{font-size:13px;color:#63758a}

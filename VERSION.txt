@@ -1,2 +1,1 @@
-WL Credit V24.3
-New Loan customer selector and customer-bank compatibility fix
+WL Credit V24.4 Customer Personal Bank + Selectable New Loan Customer
