@@ -1,1 +1,2 @@
-WL Credit V24.2 Customer Staff Transfer Visible Fix
+WL Credit V24.3
+New Loan customer selector and customer-bank compatibility fix
