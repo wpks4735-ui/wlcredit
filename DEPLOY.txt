@@ -1,1 +1,6 @@
 WL Credit V21.1 Compact Header
+
+V24.1 Customer Transfer
+1. Run V24.1-CUSTOMER-STAFF-TRANSFER.sql in Supabase SQL Editor.
+2. Upload all website files to GitHub/Cloudflare.
+3. Finance and Super Admin can use Customers > Transfer Staff.

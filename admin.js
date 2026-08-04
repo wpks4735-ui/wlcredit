@@ -126,6 +126,7 @@ function modal(html){$('#modalBody').innerHTML=html;$('#modal').classList.add('s
 window.closeModal=()=>$('#modal').classList.remove('show');
 function normalizedRole(v){return String(v||'').trim().toLowerCase().replace(/[\s-]+/g,'_')}
 function isSuperAdmin(){return ['super_admin','superadmin'].includes(normalizedRole(state.staff?.role))}
+function canTransferCustomer(){return ['super_admin','superadmin','finance'].includes(normalizedRole(state.staff?.role))}
 function isAdminLevel(){return ['super_admin','superadmin','finance','manager','admin','supervisor'].includes(normalizedRole(state.staff?.role))}
 function canSeeAllCustomers(){return isSuperAdmin()||normalizedRole(state.staff?.role)==='finance'}
 function isMine(row){return String(row?.owner_staff_id||row?.claimed_by||'')===String(state.staff?.user_id||'')}
@@ -931,7 +932,7 @@ renderCustomers=function(){
   });
   $('#customerRows').innerHTML=filtered.map(c=>{
     const activeLoans=(state.loans||[]).filter(l=>String(l.customer_id)===String(c.id)&&l.status==='active').length;
-    const transfer=isSuperAdmin()?`<button class="btn btn-secondary" onclick="v17TransferCustomer('${c.id}')">${SWK_LANG.current==='zh'?'转接客服':SWK_LANG.current==='ms'?'Pindah Staf':'Transfer'}</button>`:'';
+    const transfer=canTransferCustomer()?`<button class="btn btn-secondary" onclick="v17TransferCustomer('${c.id}')">${SWK_LANG.current==='zh'?'转移客服':SWK_LANG.current==='ms'?'Pindah Khidmat Pelanggan':'Transfer Staff'}</button>`:'';
     const toggleKey=c.is_active===false?'enable':'disable';
     return `<tr>
       <td><strong class="customer-username click-link" onclick="openCustomerProfile('${c.id}')">${esc(c.customer_code||'-')}</strong></td>
@@ -965,11 +966,34 @@ window.toggleCustomerStatus=async(id,enabled)=>{
 };
 
 window.v17TransferCustomer=id=>{
-  if(!isSuperAdmin())return toast(tr('noAccess'),true);
+  if(!canTransferCustomer())return toast(tr('noAccess'),true);
   const c=state.customers.find(x=>x.id===id);if(!c)return;
-  const options=v17ServiceStaff().map(s=>`<option value="${s.user_id}" ${String(c.owner_staff_id)===String(s.user_id)?'selected':''}>${esc(v17StaffDisplay(s))}</option>`).join('');
-  modal(`<h2>${SWK_LANG.current==='zh'?'转接客户':SWK_LANG.current==='ms'?'Pindah Pelanggan':'Transfer Customer'}</h2><p><strong>${esc(customerUsername(c))} · ${esc(c.full_name)}</strong></p><form id="v17TransferForm"><div class="field"><label>${SWK_LANG.current==='zh'?'转接给':SWK_LANG.current==='ms'?'Pindah kepada':'Transfer to'}</label><select name="staff" required>${options}</select></div><p class="muted">${SWK_LANG.current==='zh'?'客户、贷款及后续收款责任会转给新的客服。':'Customer ownership and future collection responsibility will move to the selected staff.'}</p><button class="btn btn-primary">${SWK_LANG.current==='zh'?'确认转接':'Confirm Transfer'}</button></form>`);
-  $('#v17TransferForm').onsubmit=async e=>{e.preventDefault();const staff=new FormData(e.target).get('staff');const {data,error}=await sb.rpc('super_admin_transfer_customer',{p_customer_id:id,p_target_staff_id:staff});if(error||data?.error)return toast(data?.error||error.message,true);closeModal();toast(SWK_LANG.current==='zh'?'转接成功':'Transferred successfully');await loadAll()};
+  const staffRows=v17ServiceStaff().filter(s=>String(s.user_id)!==String(c.owner_staff_id));
+  if(!staffRows.length)return toast(SWK_LANG.current==='zh'?'没有其他可转移的客服':SWK_LANG.current==='ms'?'Tiada khidmat pelanggan lain tersedia':'No other customer service staff is available',true);
+  const options=staffRows.map(s=>`<option value="${s.user_id}">${esc(v17StaffDisplay(s))}</option>`).join('');
+  const current=state.staffList.find(s=>String(s.user_id)===String(c.owner_staff_id));
+  modal(`<h2>${SWK_LANG.current==='zh'?'转移客户':SWK_LANG.current==='ms'?'Pindah Pelanggan':'Transfer Customer'}</h2>
+    <p><strong>${esc(customerUsername(c))} · ${esc(c.full_name)}</strong></p>
+    <p class="muted">${SWK_LANG.current==='zh'?'目前客服：':SWK_LANG.current==='ms'?'Khidmat pelanggan semasa: ':'Current staff: '}${esc(current?v17StaffDisplay(current):(SWK_LANG.current==='zh'?'未分配':'Unassigned'))}</p>
+    <form id="v17TransferForm">
+      <div class="field"><label>${SWK_LANG.current==='zh'?'转移至客服':SWK_LANG.current==='ms'?'Pindah kepada':'Transfer to'}</label><select name="staff" required>${options}</select></div>
+      <div class="field"><label>${SWK_LANG.current==='zh'?'转移原因':SWK_LANG.current==='ms'?'Sebab pemindahan':'Transfer reason'}</label><textarea name="reason" required minlength="2" placeholder="${SWK_LANG.current==='zh'?'请输入转移原因':SWK_LANG.current==='ms'?'Masukkan sebab pemindahan':'Enter transfer reason'}"></textarea></div>
+      <p class="muted">${SWK_LANG.current==='zh'?'转移后，原客服将无法再查看该客户；新客服将接管客户、进行中贷款、付款、逾期与通知。如果当前收款银行不属于新客服，系统会自动取消该银行分配，之后需要重新分配。':SWK_LANG.current==='ms'?'Selepas pemindahan, kakitangan lama tidak lagi boleh melihat pelanggan. Pinjaman, bayaran, tunggakan dan notifikasi akan dipindahkan. Akaun bank yang tidak dimiliki kakitangan baharu akan dinyahagih.':'After transfer, the previous staff member loses access. The new staff member takes over the customer, active loans, payments, overdue work and notifications. A receiving bank unavailable to the new staff will be unassigned.'}</p>
+      <button class="btn btn-primary">${SWK_LANG.current==='zh'?'确认转移':SWK_LANG.current==='ms'?'Sahkan Pemindahan':'Confirm Transfer'}</button>
+    </form>`);
+  $('#v17TransferForm').onsubmit=async e=>{
+    e.preventDefault();
+    const f=new FormData(e.target),staff=f.get('staff'),reason=String(f.get('reason')||'').trim();
+    if(!reason)return toast(SWK_LANG.current==='zh'?'必须填写转移原因':'Transfer reason is required',true);
+    const button=e.target.querySelector('button[type="submit"],button.btn-primary');if(button)button.disabled=true;
+    const {data,error}=await sb.rpc('wl_transfer_customer',{p_customer_id:id,p_target_staff_id:staff,p_reason:reason});
+    if(button)button.disabled=false;
+    if(error||!data?.ok)return toast(data?.error||error?.message||'Transfer failed',true);
+    closeModal();
+    const bankCleared=data.bank_unassigned===true;
+    toast((SWK_LANG.current==='zh'?'客户转移成功':'Customer transferred successfully')+(bankCleared?(SWK_LANG.current==='zh'?'；原收款银行已取消，请重新分配':' ; receiving bank was unassigned') :''));
+    await loadAll();
+  };
 };
 
 window.v17AssignStaffBank=staffId=>{
