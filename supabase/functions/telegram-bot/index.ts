@@ -101,23 +101,20 @@ Deno.serve(async(req)=>{
         if(!force&&(nowTotal<configuredTotal||settings.last_report_date===today)) return reply({ok:true,skipped:true,now,configured});
       }
       const monthStart=today.slice(0,7)+"-01";
-      const [loansToday,repayToday,appsToday,overdue,attendance,loansMonth,repayMonth,expensesToday,incomeToday]=await Promise.all([
+      const [loansToday,repayToday,appsToday,loansMonth,repayMonth,expensesToday,expensesMonth]=await Promise.all([
         admin.from("loans").select("principal").gte("created_at",today+"T00:00:00+08:00").lt("created_at",today+"T23:59:59+08:00"),
         admin.from("repayments").select("amount").eq("payment_date",today),
         admin.from("loan_applications").select("id",{count:"exact",head:true}).gte("created_at",today+"T00:00:00+08:00").lt("created_at",today+"T23:59:59+08:00"),
-        admin.from("loans").select("remaining_amount").lt("due_date",today).neq("status","paid"),
-        admin.from("attendance_records").select("employee_id").eq("attendance_date",today),
         admin.from("loans").select("principal").gte("created_at",monthStart+"T00:00:00+08:00"),
         admin.from("repayments").select("amount").gte("payment_date",monthStart).lte("payment_date",today),
         admin.from("company_expenses").select("amount").eq("expense_date",today),
-        admin.from("company_income").select("amount").eq("income_date",today),
+        admin.from("company_expenses").select("amount").gte("expense_date",monthStart).lte("expense_date",today),
       ]);
       const sum=(rows:any[]|null,key:string)=>Number((rows||[]).reduce((a,r)=>a+Number(r?.[key]||0),0));
-      const todayDisbursed=sum(loansToday.data,"principal"),todayCollected=sum(repayToday.data,"amount"),todayExpenses=sum(expensesToday.data,"amount"),todayIncome=sum(incomeToday.data,"amount");
-      const monthDisbursed=sum(loansMonth.data,"principal"),monthCollected=sum(repayMonth.data,"amount");
-      const todayNet=todayCollected+todayIncome-todayDisbursed-todayExpenses;
-      const monthNet=monthCollected-monthDisbursed;
-      const overdueAmount=sum(overdue.data,"remaining_amount");
+      const todayDisbursed=sum(loansToday.data,"principal"),todayCollected=sum(repayToday.data,"amount"),todayExpenses=sum(expensesToday.data,"amount");
+      const monthDisbursed=sum(loansMonth.data,"principal"),monthCollected=sum(repayMonth.data,"amount"),monthExpenses=sum(expensesMonth.data,"amount");
+      const todayProfit=todayCollected-todayDisbursed-todayExpenses;
+      const monthProfit=monthCollected-monthDisbursed-monthExpenses;
       const msg=`📊 WL CREDIT 每日營運報告
 📅 日期：${today}
 
@@ -133,27 +130,19 @@ ${(repayToday.data||[]).length} 筆｜${money(todayCollected)}
 🆕 新貸款申請
 ${appsToday.count||0} 筆
 
-⚠️ 逾期貸款
-${(overdue.data||[]).length} 筆｜${money(overdueAmount)}
-
-👥 今日出勤
-${(attendance.data||[]).length} 人
-
 🧾 公司支出
 ${money(todayExpenses)}
 
-➕ 其他收入
-${money(todayIncome)}
-
-📈 今日淨現金流
-${money(todayNet)}
+📈 今日盈虧
+${money(todayProfit)}
 
 ━━━━━━━━━━━━━━
 📆 本月累計
 
 💸 本月放款：${money(monthDisbursed)}
 💰 本月收款：${money(monthCollected)}
-📊 本月淨現金流：${money(monthNet)}
+🧾 本月開銷：${money(monthExpenses)}
+📈 本月盈虧：${money(monthProfit)}
 
 ━━━━━━━━━━━━━━
 🤖 WL Credit 系統自動發送`;
