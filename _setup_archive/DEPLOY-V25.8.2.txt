@@ -1,0 +1,3 @@
+1. Run V25.8.2-CUSTOMER-VIDEO-STORAGE.sql in Supabase SQL Editor.
+2. Upload all website files to GitHub/Cloudflare Pages.
+3. Hard refresh admin after deployment.

@@ -1,0 +1,10 @@
+WL Credit V25.8.4 Integrated
+
+Upload the website files/folders in this package to GitHub.
+The _setup_archive folder contains old SQL migrations and deployment notes for reference only; it does not need to be uploaded to Cloudflare Pages.
+
+V25.8.4 fixes:
+- Finance pending list shows only Process Disbursement; Reject is only inside the detail screen.
+- Prevents legacy reject button from reappearing after realtime refresh.
+- Keeps only one Today Work sidebar item.
+- Consolidates 16 historical patch JS files into wl-credit-integrated-v25.8.4.js to reduce GitHub file count.
