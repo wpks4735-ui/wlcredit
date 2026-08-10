@@ -1,0 +1,5 @@
+WL Credit V25.8.3
+1. Upload all files to GitHub/Cloudflare Pages.
+2. No new SQL required for this patch.
+3. Hard refresh after deployment.
+Fixes: duplicate Today Work nav, Finance Today Work direct Process Disbursement, immediate loading state for disbursement review.

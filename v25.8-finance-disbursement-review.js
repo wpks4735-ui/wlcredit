@@ -25,7 +25,9 @@ async function docHtml(d,i){
  return `<div class="card" style="padding:12px"><strong>${E(label)}</strong><div style="margin-top:8px">${view}</div></div>`;
 }
 async function openReview(id){
- const a=await getApp(id);if(!a)return window.toast?.(L('找不到申请','Application not found','Permohonan tidak ditemui'),true);
+ // V25.8.3: render immediately so Finance never waits on a blank/old page while async data loads.
+ window.modal?.(`<div class="card" style="min-height:220px;display:flex;align-items:center;justify-content:center;text-align:center"><div><h2>${L('处理出款','Process Disbursement','Proses Pengeluaran')}</h2><p class="muted">${L('正在载入客户资料…','Loading customer details…','Memuatkan butiran pelanggan…')}</p><div style="margin-top:18px"><button class="btn btn-primary" disabled>${L('确认出款','Confirm Disbursement','Sahkan Pengeluaran')}</button> <button class="btn btn-danger" disabled>${L('拒绝出款','Reject Disbursement','Tolak Pengeluaran')}</button></div></div></div>`);
+ const a=await getApp(id);if(!a){window.closeModal?.();return window.toast?.(L('找不到申请','Application not found','Permohonan tidak ditemui'),true);}
  const c=await getCustomer(a),docs=await getDocs(a,c),banks=(await db().from('company_bank_accounts').select('*').eq('is_enabled',true).eq('can_disburse',true)).data||[];
  const dh=(await Promise.all(docs.map(docHtml))).join('')||`<p class="muted">${L('没有文件','No documents','Tiada dokumen')}</p>`;
  const p=Number(a.approved_principal||a.requested_amount||0),interest=Number(a.approved_interest||0),settle=Number(a.approved_settlement_amount||p+interest);

@@ -625,7 +625,7 @@ function navButton(section,label,badgeId){const b=document.createElement('button
 function injectNavigation(){
  const nav=$('#nav'); if(!nav)return;
  const dashboardBtn=nav.querySelector('[data-section="dashboard"]');
- if(!$('#navMyWork')&&dashboardBtn){const my=navButton('myWork',L('今日工作','Today Work','Kerja Hari Ini'),'navMyWorkBadge');my.id='navMyWork';nav.insertBefore(my,dashboardBtn)}
+ /* V25.8.3: legacy myWork nav disabled; v23.6 todayWork is the single source of truth */
  const loanMenu=nav.querySelector('[data-nav-group="loan"] .nav-submenu');const appBtn=loanMenu?.querySelector('[data-section="loanApplications"]');
  if(loanMenu&&appBtn&&!loanMenu.querySelector('[data-section="loanReview"]')){const review=navButton('loanReview',L('贷款审核','Loan Review','Semakan Pinjaman'),'navLoanReviewBadge');appBtn.after(review)}
  const reportsMenu=nav.querySelector('[data-nav-group="reports"] .nav-submenu');if(reportsMenu&&!reportsMenu.querySelector('[data-section="staffPerformance"]')){const perf=navButton('staffPerformance',L('客服业绩报表','Staff Performance','Prestasi Staf'));reportsMenu.prepend(perf)}
