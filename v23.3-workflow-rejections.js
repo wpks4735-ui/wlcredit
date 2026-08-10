@@ -108,7 +108,7 @@ function renderTodayWork(){
  const advances=adv.filter(x=>['requested','pending'].includes(String(x.status||'').toLowerCase()));
  const parts=[];
  if(finance||superA){
-  parts.push(`<div><h3>${L('待放款','Pending Disbursement','Menunggu Pengeluaran')}</h3><div class="table-wrap"><table class="table"><tbody>${disb.map(a=>`<tr><td>${E(a.application_code||'-')}</td><td>${E(a.full_name||'-')}</td><td>${fmt(a.approved_principal)}</td><td>${rowAction('financeDisbursements',L('处理','Process','Proses'))}</td></tr>`).join('')}</tbody></table></div></div>`);
+  parts.push(`<div><h3>${L('待放款','Pending Disbursement','Menunggu Pengeluaran')}</h3><div class="table-wrap"><table class="table"><tbody>${disb.map(a=>`<tr><td>${E(a.application_code||'-')}</td><td>${E(a.full_name||'-')}</td><td>${fmt(a.approved_principal)}</td><td><button class="btn btn-secondary" data-v258-today-disburse="${E(a.id)}">${L('处理','Process','Proses')}</button></td></tr>`).join('')}</tbody></table></div></div>`);
   parts.push(`<div><h3>${L('待收款','Pending Receipts','Menunggu Penerimaan')}</h3><div class="table-wrap"><table class="table"><tbody>${receipts.map(x=>`<tr><td>${E(x.customers?.full_name||'-')}</td><td>${E(shortLoan(x.loans?.loan_id))}</td><td>${fmt(x.amount)}</td><td>${rowAction('financeReceipts',L('处理','Process','Proses'))}</td></tr>`).join('')}</tbody></table></div></div>`);
   parts.push(`<div><h3>${L('预支工资','Salary Advances','Pendahuluan Gaji')}</h3><div class="table-wrap"><table class="table"><tbody>${advances.map(x=>`<tr><td>${E(x.employees?.full_name||'-')}</td><td>${fmt(x.amount)}</td><td>${E(x.reason||'-')}</td><td><button class="btn btn-danger" data-v233-advance-reject="${E(x.id)}">${L('拒绝','Reject','Tolak')}</button></td></tr>`).join('')}</tbody></table></div></div>`);
  }
@@ -143,6 +143,15 @@ window.renderAll=function(){const r=oldRenderAll?.apply(this,arguments);setTimeo
 const oldSwitch=window.switchSection;
 window.switchSection=function(id){const r=oldSwitch?.apply(this,arguments);if(id==='todayWork')setTimeout(renderTodayWork,20);return r};
 setInterval(()=>{patchApplicationRows();patchFinanceRows();patchPendingFinanceRows();patchAdvanceRows();patchProfileName()},2500);
+
+document.addEventListener('click',e=>{
+ const b=e.target.closest('[data-v258-today-disburse]');if(!b)return;
+ e.preventDefault();e.stopImmediatePropagation();
+ const id=b.dataset.v258TodayDisburse;
+ if(typeof window.v258OpenFinanceDisbursement==='function')window.v258OpenFinanceDisbursement(id);
+ else { const nav=document.querySelector('[data-section="financeDisbursements"]'); nav?.click(); setTimeout(()=>document.querySelector(`[data-v36-finance-disburse="${CSS.escape(id)}"]`)?.click(),100); }
+},true);
+
 window.addEventListener('swk-language-applied',()=>setTimeout(()=>{renderTodayWork();patchApplicationRows();patchFinanceRows();patchPendingFinanceRows();patchAdvanceRows();patchProfileName()},30));
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(()=>{ensureTodayWork();renderTodayWork();patchProfileName()},0));else setTimeout(()=>{ensureTodayWork();renderTodayWork();patchProfileName()},0);
 })();

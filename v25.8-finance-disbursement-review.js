@@ -20,7 +20,9 @@ async function docHtml(d,i){
  const bucket=d.bucket_name||'customer-documents',path=d.storage_path||d.path;if(!path)return '';
  const r=await db().storage.from(bucket).createSignedUrl(path,900);const url=r.error?'':r.data?.signedUrl;
  const label=d.category||d.document_type||d.file_name||`Document ${i+1}`;
- return `<div class="card" style="padding:12px"><strong>${E(label)}</strong><div style="margin-top:8px">${url?`<a class="btn btn-secondary" href="${E(url)}" target="_blank" rel="noopener">${L('查看文件','View file','Lihat fail')}</a>`:`<span class="muted">${L('无法读取','Unavailable','Tidak tersedia')}</span>`}</div></div>`;
+ const isVideo=String(d.mime_type||'').startsWith('video/')||/\.(mp4|mov|webm)(\?|$)/i.test(String(path));
+ const view=url?(isVideo?`<video controls preload="metadata" style="width:100%;max-height:360px;border-radius:10px" src="${E(url)}"></video><div style="margin-top:8px"><a class="btn btn-secondary" href="${E(url)}" target="_blank" rel="noopener">${L('打开影片','Open video','Buka video')}</a></div>`:`<a class="btn btn-secondary" href="${E(url)}" target="_blank" rel="noopener">${L('查看文件','View file','Lihat fail')}</a>`):`<span class="muted">${L('无法读取','Unavailable','Tidak tersedia')}</span>`;
+ return `<div class="card" style="padding:12px"><strong>${E(label)}</strong><div style="margin-top:8px">${view}</div></div>`;
 }
 async function openReview(id){
  const a=await getApp(id);if(!a)return window.toast?.(L('找不到申请','Application not found','Permohonan tidak ditemui'),true);
@@ -44,7 +46,11 @@ async function openReview(id){
  <div class="field"><label>${L('财务出款备注','Finance Disbursement Note','Catatan Pengeluaran Kewangan')}</label><textarea name="note">${E(a.finance_note||'')}</textarea></div>
  <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn btn-primary" type="submit">${L('确认出款','Confirm Disbursement','Sahkan Pengeluaran')}</button><button class="btn btn-danger" type="button" id="v258Reject">${L('拒绝出款','Reject Disbursement','Tolak Pengeluaran')}</button><button class="btn btn-secondary" type="button" onclick="closeModal()">${L('取消','Cancel','Batal')}</button></div></form>`);
  const f=document.querySelector('#v258FinanceForm');f.elements.at.value=new Date(Date.now()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,16);
- document.querySelector('#v258Reject').onclick=()=>{window.closeModal?.(); if(typeof window.v233RejectFinanceDisbursement==='function')window.v233RejectFinanceDisbursement(id);else window.toast?.(L('拒绝功能未载入','Reject function unavailable','Fungsi tolak tidak tersedia'),true)};
+ document.querySelector('#v258Reject').onclick=()=>{
+  if(typeof window.v233RejectFinanceDisbursement==='function'){window.closeModal?.();return window.v233RejectFinanceDisbursement(id)}
+  window.modal?.(`<h2>${L('拒绝出款','Reject Disbursement','Tolak Pengeluaran')}</h2><form id="v258RejectForm"><div class="field"><label>${L('拒绝原因','Rejection reason','Sebab penolakan')}</label><textarea name="reason" rows="4" required minlength="3"></textarea></div><div style="display:flex;gap:10px"><button class="btn btn-danger">${L('确认拒绝','Confirm Reject','Sahkan Tolak')}</button><button type="button" class="btn btn-secondary" onclick="closeModal()">${L('取消','Cancel','Batal')}</button></div></form>`);
+  document.querySelector('#v258RejectForm').onsubmit=async ev=>{ev.preventDefault();const reason=String(new FormData(ev.target).get('reason')||'').trim();if(reason.length<3)return window.toast?.(L('请填写拒绝原因','Enter a rejection reason','Masukkan sebab penolakan'),true);const r=await db().rpc('wl_reject_loan_workflow_v233',{p_application_id:id,p_stage:'finance_disbursement',p_reason:reason});if(r.error||r.data?.ok===false)return window.toast?.(r.error?.message||r.data?.error||L('拒绝失败','Reject failed','Penolakan gagal'),true);window.closeModal?.();window.toast?.(L('已退回客服修改','Returned to staff for correction','Dikembalikan kepada staf'));await window.loadAll?.();};
+ };
  f.onsubmit=async e=>{e.preventDefault();const fd=new FormData(f),proof=fd.get('proof');if(!(proof instanceof File)||!proof.size)return window.toast?.(L('请上传出款截图','Please upload proof','Sila muat naik bukti'),true);
   const principal=Number(fd.get('principal')),iv=Number(fd.get('interest')),settlement=Number(fd.get('settlement')),at=new Date(fd.get('at')).toISOString();
   const safe=String(proof.name||'proof').replace(/[^a-zA-Z0-9._-]+/g,'-'),path=`${id}/${Date.now()}-${safe}`;
