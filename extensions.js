@@ -842,7 +842,7 @@ function renderBankHistory(){
  }
  let list=fstate.transactions.filter(x=>(!selected||String(x.bank_account_id)===selected)&&(!f||String(x.transaction_at||'').slice(0,10)>=f)&&(!t||String(x.transaction_at||'').slice(0,10)<=t));
  const title=$('#v33BankHistoryTitle');if(title){const b=fstate.banks.find(x=>String(x.id)===selected);title.textContent=b?`${b.bank_name} · ${b.account_number}`:L('全部银行','All Banks','Semua Bank')}
- h.innerHTML=list.map(x=>{const b=fstate.banks.find(z=>String(z.id)===String(x.bank_account_id)),l=(state.loans||[]).find(z=>String(z.id)===String(x.loan_id)),c=(state.customers||[]).find(z=>String(z.id)===String(x.customer_id)),st=(state.staffList||[]).find(z=>String(z.user_id)===String(x.created_by));return `<tr><td>${new Date(x.transaction_at).toLocaleString()}</td><td>${E(b?.bank_name||'-')}</td><td>${x.transaction_type==='inflow'?L('收款','Receipt','Penerimaan'):L('放款','Disbursement','Pengeluaran')}</td><td>${E(c?.full_name||'-')}</td><td>${shortLoan(l?.loan_id||'')}</td><td>${money2(x.amount)}</td><td>${E(st?.full_name||st?.username||'-')}</td></tr>`}).join('')||`<tr><td colspan="7">${L('暂无记录','No records','Tiada rekod')}</td></tr>`;
+ h.innerHTML=list.map(x=>{const b=fstate.banks.find(z=>String(z.id)===String(x.bank_account_id)),l=(state.loans||[]).find(z=>String(z.id)===String(x.loan_id)),c=(state.customers||[]).find(z=>String(z.id)===String(x.customer_id)),st=(state.staffList||[]).find(z=>String(z.user_id)===String(x.created_by));return `<tr><td>${new Date(x.transaction_at).toLocaleString()}</td><td>${E(b?.bank_name||'-')}</td><td>${x.transaction_type==='inflow'?L('收款','Receipt','Penerimaan'):L('放款','Disbursement','Pengeluaran')}</td><td>${E(c?.full_name||'-')}</td><td>${shortLoan(l?.loan_id||'')}</td><td>${money2(x.amount)}</td><td>${E(st?.full_name||st?.username||'-')}</td></tr>`}).join('')||`<tr><td colspan="8">${L('暂无记录','No records','Tiada rekod')}</td></tr>`;
 }
 window.v33SelectBankHistory=id=>{window.v33SelectedBankId=String(id||'');renderBankHistory()};
 window.v33ShowBankHistory=id=>{window.v33SelectedBankId=id;renderBankHistory();document.querySelector('#v33BankHistoryPanel')?.scrollIntoView({behavior:'smooth',block:'start'})};
@@ -1723,7 +1723,7 @@ function applyPendingFinanceLabels(){
   navPaymentHistoryLabel:L('付款历史','Payment History','Sejarah Bayaran'),
   pendingFinanceTitle:L('待财务出款','Pending Finance Disbursement','Menunggu Pengeluaran Kewangan'),
   pendingFinanceHelp:L('显示已提交财务的申请；财务出款后由原客服确认并建立账号。','Applications submitted to finance. After disbursement, the original staff confirms and creates the account.','Permohonan dihantar kepada kewangan. Selepas pengeluaran, staf asal mengesahkan dan mencipta akaun.'),
-  pfColApp:L('申请编号','Application ID','ID Permohonan'),pfColCustomer:L('客户','Customer','Pelanggan'),pfColPrincipal:L('本金','Principal','Prinsipal'),pfColBank:L('客户银行','Customer Bank','Bank Pelanggan'),pfColSubmitted:L('提交时间','Submitted At','Masa Dihantar'),pfColStatus:L('状态','Status','Status'),pfColAction:L('操作','Action','Tindakan')
+  pfColApp:L('申请编号','Application ID','ID Permohonan'),pfColCustomer:L('客户','Customer','Pelanggan'),pfColPrincipal:L('本金','Principal','Prinsipal'),pfColBank:L('客户银行','Customer Bank','Bank Pelanggan'),pfColSubmitted:L('提交时间','Submitted At','Masa Dihantar'),pfColStatus:L('状态','Status','Status'),pfColProof:L('出款收据','Disbursement Receipt','Resit Pengeluaran'),pfColAction:L('操作','Action','Tindakan')
  };
  Object.entries(pairs).forEach(([id,v])=>{const el=$('#'+id);if(el)el.textContent=v});
  const tabs=$$('#pendingFinanceTabs [data-pf-status]');
@@ -1740,12 +1740,33 @@ function renderPendingFinance(){
   const own=isOwner(a)||allAccess();
   const status=done?L('财务已出款，待客服确认','Finance disbursed — staff confirmation pending','Kewangan telah bayar — menunggu pengesahan staf'):L('等待财务出款','Waiting for finance disbursement','Menunggu pengeluaran kewangan');
   const action=done&&own?`<button class="btn btn-primary" data-v36-final-approve="${esc(a.id)}">${L('确认通过并建立账号','Confirm & Create Account','Sahkan & Cipta Akaun')}</button>`:`<button class="btn btn-secondary" data-v36-review="${esc(a.id)}">${L('查看详情','View Details','Lihat Butiran')}</button>`;
-  return `<tr><td class="mono">${esc(a.application_code||a.id)}</td><td>${esc(a.full_name||'-')}</td><td>${money(a.approved_principal)}</td><td>${esc(a.bank_name||a.customer_bank_name||'-')}<br><small>${esc(a.bank_account_name||a.account_name||'-')} · ${esc(a.bank_account_number||a.account_number||'-')}</small></td><td>${esc(fmtDate(a.submitted_to_finance_at))}</td><td><span class="badge ${done?'success':'warn'}">${status}</span></td><td>${action}</td></tr>`;
+  const proofAction=done&&a.finance_proof_path
+    ? `<button class="btn btn-secondary" data-v258-open-proof="${esc(a.id)}">${L('查看出款收据','View Disbursement Receipt','Lihat Resit Pengeluaran')}</button>`
+    : `<span class="muted">${L('暂无收据','No receipt','Tiada resit')}</span>`;
+  return `<tr><td class="mono">${esc(a.application_code||a.id)}</td><td>${esc(a.full_name||'-')}</td><td>${money(a.approved_principal)}</td><td>${esc(a.bank_name||a.customer_bank_name||'-')}<br><small>${esc(a.bank_account_name||a.account_name||'-')} · ${esc(a.bank_account_number||a.account_number||'-')}</small></td><td>${esc(fmtDate(a.submitted_to_finance_at))}</td><td><span class="badge ${done?'success':'warn'}">${status}</span></td><td>${proofAction}</td><td>${action}</td></tr>`;
  }).join('')||`<tr><td colspan="7">${L('暂无记录','No records','Tiada rekod')}</td></tr>`;
  const badge=$('#navPendingFinanceBadge');if(badge){const n=all.length;badge.textContent=n;badge.classList.toggle('hidden',!n)}
 }
 function financeDisbursedForCurrentStaff(){return pendingFinanceList().filter(a=>a.status==='finance_disbursed').length}
 window.renderPendingFinance=renderPendingFinance;
+
+// V25.8.5 — finance disbursement receipts remain stored and can be opened at any time from the queue.
+document.addEventListener('click',async e=>{
+ const b=e.target.closest('[data-v258-open-proof]');
+ if(!b)return;
+ e.preventDefault(); e.stopImmediatePropagation();
+ try{
+   const id=b.dataset.v258OpenProof;
+   const a=(state().applications||[]).find(x=>String(x.id)===String(id));
+   const path=a?.finance_proof_path;
+   if(!path)throw new Error(L('找不到出款收据','Disbursement receipt not found','Resit pengeluaran tidak ditemui'));
+   const client=window.sb||window.__wlSupabase||window.supabaseClient;
+   if(!client)throw new Error('Supabase client unavailable');
+   const r=await client.storage.from('disbursement-proofs').createSignedUrl(path,900);
+   if(r.error||!r.data?.signedUrl)throw r.error||new Error(L('无法打开出款收据','Unable to open receipt','Tidak dapat membuka resit'));
+   window.open(r.data.signedUrl,'_blank','noopener');
+ }catch(err){window.toast?.(err.message||String(err),true)}
+},true);
 
 // Stable desktop + mobile event delegation.
 document.addEventListener('click',e=>{
