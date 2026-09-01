@@ -1646,7 +1646,7 @@ function openSubmitFinance(id){
   const payload={approved_principal:Number(f.get('principal')),approved_interest:Number(f.get('interest')),approved_settlement_amount:Number(f.get('settlement')),approved_due_date:f.get('due'),approval_notes:f.get('notes')||null,status:'pending_disbursement',submitted_to_finance_at:new Date().toISOString(),submitted_to_finance_by:state().staff.user_id};
   const r=await c.from('loan_applications').update(payload).eq('id',id).eq('status','under_review').select('id').maybeSingle();
   if(r.error||!r.data)return toast(r.error?.message||L('提交财务失败','Failed to submit to finance','Gagal hantar kepada kewangan'),true);
-  c.functions.invoke('telegram-bot',{body:{action:'staff_loan_submitted',application_id:id}}).catch(err=>console.warn('Telegram loan notification failed',err));
+  c.functions.invoke('telegram-bot',{body:{action:'staff_loan_submitted',application_id:id}}).then(n=>{if(n.error||n.data?.error||n.data?.skipped){console.warn('Telegram loan notification failed or skipped',n.error||n.data);toast(L('贷款已提交，但 Telegram 工作群通知未发送；请检查 Telegram 已启用','Loan submitted, but Telegram notification was not sent; check that Telegram is enabled','Pinjaman dihantar, tetapi notifikasi Telegram tidak dihantar; semak Telegram diaktifkan'),true)}}).catch(err=>console.warn('Telegram loan notification failed',err));
   window.closeModal?.();toast(L('已提交财务出款','Submitted to finance','Telah dihantar kepada kewangan'));await refreshApplications();window.switchSection?.('pendingFinance');
  };
 }

@@ -982,7 +982,9 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
    }
    if(!result.error&&result.data?.ok!==false&&fn==='wl_submit_existing_customer_loan'){
      const d=drafts.get('existing');if(d){const appId=result.data?.application_id||result.data?.id;if(appId)await window.sb.from('loan_applications').update({repayment_cycle_type:d.type,repayment_cycle_value:d.value,first_due_at:d.due}).eq('id',appId)}
-     const appId=result.data?.application_id||result.data?.id;if(appId)window.sb.functions.invoke('telegram-bot',{body:{action:'staff_loan_submitted',application_id:appId}}).catch(err=>console.warn('Telegram loan notification failed',err));
+     let appId=result.data?.application_id||result.data?.id;
+     if(!appId&&args?.p_customer_id){const latest=await window.sb.from('loan_applications').select('id').or(`customer_id.eq.${args.p_customer_id},existing_customer_id.eq.${args.p_customer_id}`).order('created_at',{ascending:false}).limit(1).maybeSingle();appId=latest.data?.id}
+     if(appId){const notice=await window.sb.functions.invoke('telegram-bot',{body:{action:'staff_loan_submitted',application_id:appId}});if(notice.error||notice.data?.error||notice.data?.skipped){console.warn('Telegram loan notification failed or skipped',notice.error||notice.data);window.toast?.(T('贷款已提交，但 Telegram 工作群通知未发送；请检查 Telegram 已启用','Loan submitted, but the Telegram notification was not sent; check that Telegram is enabled','Pinjaman dihantar, tetapi notifikasi Telegram tidak dihantar; semak Telegram diaktifkan'),true)}}
    }
   }catch(err){console.warn('[V24 schedule persistence]',err)}return result};wrapped.__v24=true;window.sb.rpc=wrapped}
  const rpcTimer=setInterval(()=>{if(window.sb?.rpc){clearInterval(rpcTimer);wrapRpc()}},200);
