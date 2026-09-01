@@ -1786,3 +1786,62 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
  new MutationObserver(queue).observe(document.body||document.documentElement,{subtree:true,childList:true});
  document.addEventListener('DOMContentLoaded',normalize); setTimeout(normalize,0); setTimeout(normalize,500);
 })();
+/* WL Credit V25.9: permanent receipts, customer tags and entity history. */
+(function(){
+ const api=()=>window.__wlSupabase||window.sb, S=()=>window.state||state;
+ const E=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+ const T=(zh,en,ms)=>((window.SWK_LANG?.current||'en')==='zh'?zh:(window.SWK_LANG?.current==='ms'?ms:en));
+ const role=()=>String(S()?.staff?.role||'').toLowerCase().replace(/-/g,'_');
+ const superAdmin=()=>['super_admin','superadmin'].includes(role());
+ const cache={tags:[],assignments:[],receipts:[]};
+ const tagsFor=id=>cache.assignments.filter(x=>String(x.customer_id)===String(id)).map(x=>cache.tags.find(t=>String(t.id)===String(x.tag_id))).filter(Boolean);
+ const pills=id=>tagsFor(id).map(t=>`<span class="wl259-tag" style="--tag:${E(t.color)}">${E(t.name)}</span>`).join('');
+ async function refresh(){
+  const c=api();if(!c?.from)return;
+  const [t,a,r]=await Promise.all([c.from('customer_tags').select('*').order('sort_order'),c.from('customer_tag_assignments').select('*'),c.from('disbursement_receipts').select('*').order('uploaded_at',{ascending:false})]);
+  if(!t.error)cache.tags=t.data||[];if(!a.error)cache.assignments=a.data||[];if(!r.error)cache.receipts=r.data||[];
+  decorateRows();addManageButton();
+ }
+ function decorateRows(){
+  document.querySelectorAll('#customerRows tr').forEach(tr=>{
+   const id=tr.querySelector('[onclick*="openCustomerProfile"]')?.getAttribute('onclick')?.match(/'([^']+)'/)?.[1];if(!id)return;
+   const name=tr.children[1];if(name&&!name.querySelector('.wl259-tags'))name.insertAdjacentHTML('beforeend',`<div class="wl259-tags">${pills(id)}</div>`);else if(name)name.querySelector('.wl259-tags').innerHTML=pills(id);
+   const actions=tr.lastElementChild;if(actions&&!actions.querySelector('[data-wl259-tags]'))actions.insertAdjacentHTML('beforeend',` <button class="btn btn-secondary" data-wl259-tags="${E(id)}">${T('标签','Tags','Tag')}</button>`);
+  });
+ }
+ function addManageButton(){
+  const head=document.querySelector('#customers .section-head');if(!head||!superAdmin()||head.querySelector('#wl259ManageTags'))return;
+  head.insertAdjacentHTML('beforeend',`<button id="wl259ManageTags" class="btn btn-secondary">${T('管理客户标签','Manage Customer Tags','Urus Tag Pelanggan')}</button>`);
+ }
+ async function assignTags(customerId){
+  await refresh();const selected=new Set(cache.assignments.filter(x=>String(x.customer_id)===String(customerId)).map(x=>String(x.tag_id)));
+  window.modal(`<h2>${T('客户标签','Customer Tags','Tag Pelanggan')}</h2><form id="wl259AssignForm"><div class="wl259-tag-grid">${cache.tags.filter(x=>x.is_active!==false).map(t=>`<label><input type="checkbox" name="tag" value="${E(t.id)}" ${selected.has(String(t.id))?'checked':''}><span class="wl259-tag" style="--tag:${E(t.color)}">${E(t.name)}</span></label>`).join('')}</div><p><button class="btn btn-primary">${T('保存','Save','Simpan')}</button></p></form>`);
+  document.querySelector('#wl259AssignForm').onsubmit=async e=>{e.preventDefault();const wanted=new Set(new FormData(e.target).getAll('tag').map(String)),old=cache.assignments.filter(x=>String(x.customer_id)===String(customerId));
+   const remove=old.filter(x=>!wanted.has(String(x.tag_id))).map(x=>x.tag_id),add=[...wanted].filter(id=>!old.some(x=>String(x.tag_id)===id)).map(tag_id=>({customer_id:customerId,tag_id,assigned_by:S().staff.user_id}));
+   if(remove.length){const q=await api().from('customer_tag_assignments').delete().eq('customer_id',customerId).in('tag_id',remove);if(q.error)return window.toast(q.error.message,true)}
+   if(add.length){const q=await api().from('customer_tag_assignments').insert(add);if(q.error)return window.toast(q.error.message,true)}
+   window.closeModal();await refresh();window.toast(T('标签已保存','Tags saved','Tag disimpan'));
+  };
+ }
+ async function manageTags(){
+  await refresh();window.modal(`<h2>${T('管理客户标签','Manage Customer Tags','Urus Tag Pelanggan')}</h2><div id="wl259TagAdmin">${cache.tags.map(t=>`<form class="wl259-tag-edit" data-id="${E(t.id)}"><input name="name" required value="${E(t.name)}"><input name="color" type="color" value="${E(t.color)}"><input name="sort" type="number" value="${Number(t.sort_order||0)}"><label><input name="active" type="checkbox" ${t.is_active!==false?'checked':''}>${T('启用','Active','Aktif')}</label><button class="btn btn-secondary">${T('保存','Save','Simpan')}</button></form>`).join('')}</div><hr><form id="wl259NewTag" class="wl259-tag-edit"><input name="name" required placeholder="${T('新标签名称','New tag name','Nama tag baharu')}"><input name="color" type="color" value="#2563EB"><input name="sort" type="number" value="100"><button class="btn btn-primary">${T('新增','Add','Tambah')}</button></form>`);
+  document.querySelectorAll('#wl259TagAdmin form').forEach(f=>f.onsubmit=async e=>{e.preventDefault();const d=new FormData(f),q=await api().from('customer_tags').update({name:d.get('name'),color:d.get('color'),sort_order:Number(d.get('sort')),is_active:d.get('active')==='on',updated_at:new Date().toISOString()}).eq('id',f.dataset.id);if(q.error)return window.toast(q.error.message,true);await manageTags()});
+  document.querySelector('#wl259NewTag').onsubmit=async e=>{e.preventDefault();const d=new FormData(e.target),q=await api().from('customer_tags').insert({name:d.get('name'),color:d.get('color'),sort_order:Number(d.get('sort')),is_active:true,created_by:S().staff.user_id});if(q.error)return window.toast(q.error.message,true);await manageTags()};
+ }
+ const value=v=>v==null?'—':typeof v==='object'?JSON.stringify(v):String(v);
+ function historyRows(rows){return rows.map(x=>{const diff=x.changed_fields||{};const detail=Object.keys(diff).map(k=>`<div><b>${E(k)}</b>: ${E(value(diff[k]?.old))} → ${E(value(diff[k]?.new))}</div>`).join('')||E(x.details||x.action);return `<tr><td>${E(new Date(x.created_at).toLocaleString())}</td><td>${E(x.staff_profiles?.full_name||x.staff_user_id||'System')}</td><td>${E(x.action)}</td><td>${detail}</td></tr>`}).join('')||`<tr><td colspan="4">${T('暂无记录','No records','Tiada rekod')}</td></tr>`}
+ async function entityHistory(customerId){
+  const loans=(S().loans||[]).filter(x=>String(x.customer_id)===String(customerId)),ids=[customerId,...loans.map(x=>x.id)].map(String);
+  const q=await api().from('audit_logs').select('*,staff_profiles(full_name)').order('created_at',{ascending:false}).limit(500);if(q.error)return [];
+  return (q.data||[]).filter(x=>ids.includes(String(x.entity_id))||ids.includes(String(x.old_values?.customer_id))||ids.includes(String(x.new_values?.customer_id))||ids.includes(String(x.old_values?.loan_id))||ids.includes(String(x.new_values?.loan_id)));
+ }
+ async function addProfilePanels(customerId){
+  const body=document.querySelector('#modalBody');if(!body)return;const histories=await entityHistory(customerId),receipts=cache.receipts.filter(r=>String(r.customer_id)===String(customerId)|| (S().loans||[]).some(l=>String(l.customer_id)===String(customerId)&&String(l.id)===String(r.loan_id)));
+  body.insertAdjacentHTML('beforeend',`<h3>${T('财务出款收据','Finance Disbursement Receipts','Resit Pengeluaran Kewangan')}</h3><div class="wl259-receipts">${receipts.map(r=>`<button class="btn btn-secondary" data-wl259-receipt="${E(r.storage_path)}">${E(r.original_name||T('查看收据','View receipt','Lihat resit'))} · ${E(new Date(r.uploaded_at).toLocaleString())}</button>`).join('')||`<p class="muted">${T('没有收据','No receipts','Tiada resit')}</p>`}</div><h3>${T('客户与贷款操作历史','Customer & Loan History','Sejarah Pelanggan & Pinjaman')}</h3><div class="table-wrap"><table class="table"><thead><tr><th>${T('时间','Time','Masa')}</th><th>${T('操作人','Staff','Staf')}</th><th>${T('操作','Action','Tindakan')}</th><th>${T('旧值 → 新值','Old → New','Lama → Baharu')}</th></tr></thead><tbody>${historyRows(histories)}</tbody></table></div>`);
+ }
+ async function openReceipt(path){const q=await api().storage.from('disbursement-proofs').createSignedUrl(path,600);if(q.error)return window.toast(q.error.message,true);window.open(q.data.signedUrl,'_blank','noopener')}
+ const oldProfile=window.openCustomerProfile;window.openCustomerProfile=function(id){oldProfile(id);setTimeout(()=>addProfilePanels(id),0)};
+ document.addEventListener('click',e=>{const t=e.target.closest('[data-wl259-tags]');if(t){e.preventDefault();assignTags(t.dataset.wl259Tags);return}if(e.target.closest('#wl259ManageTags')){e.preventDefault();manageTags();return}const r=e.target.closest('[data-wl259-receipt]');if(r){e.preventDefault();openReceipt(r.dataset.wl259Receipt)}});
+ const obs=new MutationObserver(()=>decorateRows());window.addEventListener('DOMContentLoaded',()=>{const rows=document.querySelector('#customerRows');if(rows)obs.observe(rows,{childList:true,subtree:true});setTimeout(refresh,800)});window.addEventListener('swk-language-applied',()=>setTimeout(refresh,50));
+ window.WL259={refresh,cache};
+})();
