@@ -1802,12 +1802,14 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
   if(!t.error)cache.tags=t.data||[];if(!a.error)cache.assignments=a.data||[];if(!r.error)cache.receipts=r.data||[];
   decorateRows();addManageButton();
  }
+ let decorating=false;
  function decorateRows(){
-  document.querySelectorAll('#customerRows tr').forEach(tr=>{
+  if(decorating)return;decorating=true;
+  try{document.querySelectorAll('#customerRows tr').forEach(tr=>{
    const id=tr.querySelector('[onclick*="openCustomerProfile"]')?.getAttribute('onclick')?.match(/'([^']+)'/)?.[1];if(!id)return;
-   const name=tr.children[1];if(name&&!name.querySelector('.wl259-tags'))name.insertAdjacentHTML('beforeend',`<div class="wl259-tags">${pills(id)}</div>`);else if(name)name.querySelector('.wl259-tags').innerHTML=pills(id);
+   const name=tr.children[1],html=pills(id),sig=tagsFor(id).map(t=>`${t.id}:${t.name}:${t.color}`).join('|');let host=name?.querySelector('.wl259-tags');if(name&&!host){name.insertAdjacentHTML('beforeend',`<div class="wl259-tags">${html}</div>`);host=name.querySelector('.wl259-tags');if(host)host.dataset.wl259Sig=sig}else if(host&&host.dataset.wl259Sig!==sig){host.innerHTML=html;host.dataset.wl259Sig=sig}
    const actions=tr.lastElementChild;if(actions&&!actions.querySelector('[data-wl259-tags]'))actions.insertAdjacentHTML('beforeend',` <button class="btn btn-secondary" data-wl259-tags="${E(id)}">${T('标签','Tags','Tag')}</button>`);
-  });
+  });}finally{decorating=false}
  }
  function addManageButton(){
   const head=document.querySelector('#customers .section-head');if(!head||!superAdmin()||head.querySelector('#wl259ManageTags'))return;
