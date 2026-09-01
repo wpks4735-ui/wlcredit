@@ -982,6 +982,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
    }
    if(!result.error&&result.data?.ok!==false&&fn==='wl_submit_existing_customer_loan'){
      const d=drafts.get('existing');if(d){const appId=result.data?.application_id||result.data?.id;if(appId)await window.sb.from('loan_applications').update({repayment_cycle_type:d.type,repayment_cycle_value:d.value,first_due_at:d.due}).eq('id',appId)}
+     const appId=result.data?.application_id||result.data?.id;if(appId)window.sb.functions.invoke('telegram-bot',{body:{action:'staff_loan_submitted',application_id:appId}}).catch(err=>console.warn('Telegram loan notification failed',err));
    }
   }catch(err){console.warn('[V24 schedule persistence]',err)}return result};wrapped.__v24=true;window.sb.rpc=wrapped}
  const rpcTimer=setInterval(()=>{if(window.sb?.rpc){clearInterval(rpcTimer);wrapRpc()}},200);
@@ -1139,6 +1140,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
           status:'finance_disbursed'
         }).eq('id',id);
         if(u.error)console.warn('V24.6 proof metadata update failed',u.error);
+        window.sb.functions.invoke('telegram-bot',{body:{action:'finance_disbursed',application_id:id}}).catch(err=>console.warn('Telegram disbursement notification failed',err));
         window.closeModal?.();
         window.toast?.(L('已出款，新贷款已启用；不会建立新账号','Disbursed. The new loan is active; no new account was created.','Telah dibayar. Pinjaman baharu aktif; tiada akaun baharu dicipta.'));
         await window.loadAll?.();await syncFinanceQueue();
@@ -1751,6 +1753,7 @@ async function openReview(id){
   const payload={approved_principal:principal,approved_interest:iv,approved_settlement_amount:settlement,approved_due_date:fd.get('due'),status:'finance_disbursed',finance_bank_account_id:fd.get('bank'),finance_reference:fd.get('ref')||null,finance_note:fd.get('note')||null,finance_disbursed_at:at,finance_disbursed_by:S().staff?.user_id,finance_proof_path:path,finance_proof_name:proof.name||safe};
   const u=await db().from('loan_applications').update(payload).eq('id',id).eq('status','pending_disbursement').select('id').maybeSingle();if(u.error||!u.data){await db().storage.from('disbursement-proofs').remove([path]);return window.toast?.(u.error?.message||L('出款更新失败','Update failed','Kemas kini gagal'),true)}
   const tx=await db().from('finance_transactions').insert({bank_account_id:fd.get('bank'),transaction_type:'outflow',source_type:'application_disbursement',source_id:id,amount:principal,transaction_at:at,reference_no:fd.get('ref')||null,note:fd.get('note')||null,created_by:S().staff?.user_id});if(tx.error)window.toast?.(tx.error.message,true);
+  db().functions.invoke('telegram-bot',{body:{action:'finance_disbursed',application_id:id}}).catch(err=>console.warn('Telegram disbursement notification failed',err));
   try{await db().from('audit_logs').insert({staff_user_id:S().staff?.user_id,action:'finance_disbursement_finalized',details:`${a.application_code||id}: principal ${a.approved_principal||a.requested_amount||0} -> ${principal}; interest ${a.approved_interest||0} -> ${iv}; settlement ${a.approved_settlement_amount||0} -> ${settlement}`})}catch(_){ }
   window.closeModal?.();window.toast?.(L('财务已完成出款，截图已回传客服','Disbursement completed and proof sent to staff','Pengeluaran selesai dan bukti dihantar kepada staf'));await window.loadAll?.();await window.renderFinanceApplications?.();
  };

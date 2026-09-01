@@ -1646,6 +1646,7 @@ function openSubmitFinance(id){
   const payload={approved_principal:Number(f.get('principal')),approved_interest:Number(f.get('interest')),approved_settlement_amount:Number(f.get('settlement')),approved_due_date:f.get('due'),approval_notes:f.get('notes')||null,status:'pending_disbursement',submitted_to_finance_at:new Date().toISOString(),submitted_to_finance_by:state().staff.user_id};
   const r=await c.from('loan_applications').update(payload).eq('id',id).eq('status','under_review').select('id').maybeSingle();
   if(r.error||!r.data)return toast(r.error?.message||L('提交财务失败','Failed to submit to finance','Gagal hantar kepada kewangan'),true);
+  c.functions.invoke('telegram-bot',{body:{action:'staff_loan_submitted',application_id:id}}).catch(err=>console.warn('Telegram loan notification failed',err));
   window.closeModal?.();toast(L('已提交财务出款','Submitted to finance','Telah dihantar kepada kewangan'));await refreshApplications();window.switchSection?.('pendingFinance');
  };
 }
@@ -1702,6 +1703,7 @@ async function openFinanceDisbursement(id){
   if(u.error||!u.data)return toast(u.error?.message||L('出款更新失败','Disbursement update failed','Kemas kini pengeluaran gagal'),true);
   const tx=await c.from('finance_transactions').insert({bank_account_id:d.get('bank'),transaction_type:'outflow',source_type:'application_disbursement',source_id:id,amount:Number(a.approved_principal||0),transaction_at:at,reference_no:d.get('ref')||null,note:d.get('note')||null,created_by:state().staff.user_id});
   if(tx.error)toast(tx.error.message,true);
+  c.functions.invoke('telegram-bot',{body:{action:'finance_disbursed',application_id:id}}).catch(err=>console.warn('Telegram disbursement notification failed',err));
   window.closeModal?.();toast(L('财务已完成出款','Finance disbursement completed','Pengeluaran selesai'));await refreshApplications();await renderFinanceApplications();
  };
 }

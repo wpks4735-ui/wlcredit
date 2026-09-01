@@ -6,6 +6,8 @@ const text=(v:unknown)=>String(v??"").trim();
 const money=(v:number)=>`MYR ${Number(v||0).toLocaleString("en-MY",{minimumFractionDigits:2,maximumFractionDigits:2})}`;
 const malaysiaDate=()=>new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Kuala_Lumpur",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());
 const malaysiaTime=()=>new Intl.DateTimeFormat("en-GB",{timeZone:"Asia/Kuala_Lumpur",hour:"2-digit",minute:"2-digit",hour12:false}).format(new Date());
+const addCalendarDays=(date:string,days:number)=>{const [y,m,d]=date.split("-").map(Number);const x=new Date(Date.UTC(y,m-1,d+days));return x.toISOString().slice(0,10)};
+const malaysiaDateTime=(value:unknown)=>{const d=new Date(text(value)||Date.now());return new Intl.DateTimeFormat("en-GB",{timeZone:"Asia/Kuala_Lumpur",day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit",hour12:true}).format(d)};
 
 const canonicalUsername=(v:unknown)=>{
   const raw=text(v).toUpperCase();
@@ -43,14 +45,35 @@ Deno.serve(async(req)=>{
     if(settingsError) return reply({ok:false,error:settingsError.message},500);
     if(!settings) return reply({ok:false,error:"Telegram settings have not been configured."},400);
 
-    // Tests and daily reports require an authenticated Admin/Super Admin, except the hourly cron action.
-    if(force||["test_daily","test_notification"].includes(action)){
+    // Manual tests/reports and staff workflow notifications require authentication.
+    if(force||["test_daily","test_notification","staff_loan_submitted","finance_disbursed"].includes(action)){
       const auth=req.headers.get("Authorization")||"";
       const jwt=auth.replace(/^Bearer\s+/i,"");
       const {data:{user}}=await admin.auth.getUser(jwt);
       if(!user) return reply({ok:false,error:"Not authenticated"},401);
       const {data:profile}=await admin.from("staff_profiles").select("role,is_active").eq("user_id",user.id).maybeSingle();
-      if(!profile||profile.is_active===false||profile.role!=="super_admin") return reply({ok:false,error:"Super Admin access required"},403);
+      if(!profile||profile.is_active===false) return reply({ok:false,error:"Active staff access required"},403);
+      if((force||["test_daily","test_notification"].includes(action))&&profile.role!=="super_admin") return reply({ok:false,error:"Super Admin access required"},403);
+      if(action==="finance_disbursed"&&!['finance','super_admin'].includes(String(profile.role||''))) return reply({ok:false,error:"Finance access required"},403);
+    }
+
+    if(action==="staff_loan_submitted"||action==="finance_disbursed"){
+      if(settings.is_enabled!==true) return reply({ok:true,skipped:true});
+      const id=text(body.application_id),code=text(body.application_code);
+      let query=admin.from("loan_applications").select("*");
+      query=id?query.eq("id",id):query.eq("application_code",code);
+      const {data:a,error}=await query.maybeSingle();
+      if(error) return reply({ok:false,error:error.message},500);
+      if(!a) return reply({ok:false,error:"Loan application not found"},404);
+      const customerId=(a as any).customer_id||(a as any).existing_customer_id;
+      const {data:customer}=customerId?await admin.from("customers").select("username,customer_code").eq("id",customerId).maybeSingle():{data:null};
+      const account=customer?canonicalUsername((customer as any).username||(customer as any).customer_code):"待建立";
+      const application=(a as any).application_code||code||id||"-";
+      const message=action==="staff_loan_submitted"
+        ?`📋 新贷款申请\n\n申请编号：${application}\n客户账号：${account}\n提交时间：${malaysiaDateTime((a as any).submitted_to_finance_at||(a as any).created_at)}\n\n状态：等待财务出款`
+        :`💸 财务已完成出款\n\n申请编号：${application}\n客户账号：${account}\n出款时间：${malaysiaDateTime((a as any).finance_disbursed_at)}\n\n状态：等待客服确认建立贷款`;
+      await sendTelegram(settings.bot_token,settings.notification_chat_id,message);
+      return reply({ok:true});
     }
 
     if(action==="loan_application"){
@@ -100,19 +123,23 @@ Deno.serve(async(req)=>{
         // and never more than once on the same Malaysia calendar date.
         if(!force&&(nowTotal<configuredTotal||settings.last_report_date===today)) return reply({ok:true,skipped:true,now,configured});
       }
-      const monthStart=today.slice(0,7)+"-01";
-      const [loansToday,repayToday,appsToday,loansMonth,repayMonth,expensesToday,expensesMonth]=await Promise.all([
-        admin.from("loans").select("principal").gte("created_at",today+"T00:00:00+08:00").lt("created_at",today+"T23:59:59+08:00"),
+      const monthStart=today.slice(0,7)+"-01",tomorrow=addCalendarDays(today,1);
+      const nextMonth=monthStart.slice(5,7)==="12"?`${Number(monthStart.slice(0,4))+1}-01-01`:`${monthStart.slice(0,5)}${String(Number(monthStart.slice(5,7))+1).padStart(2,"0")}-01`;
+      // A loan counts only when Finance actually disbursed it. Application creation
+      // and formal loan-account creation can happen on different calendar days.
+      const [loansToday,repayToday,loansMonth,repayMonth,expensesToday,expensesMonth]=await Promise.all([
+        admin.from("loan_applications").select("id,approved_principal,finance_disbursed_at").not("finance_disbursed_at","is",null).gte("finance_disbursed_at",today+"T00:00:00+08:00").lt("finance_disbursed_at",tomorrow+"T00:00:00+08:00"),
         admin.from("repayments").select("amount").eq("payment_date",today),
-        admin.from("loan_applications").select("id",{count:"exact",head:true}).gte("created_at",today+"T00:00:00+08:00").lt("created_at",today+"T23:59:59+08:00"),
-        admin.from("loans").select("principal").gte("created_at",monthStart+"T00:00:00+08:00"),
+        admin.from("loan_applications").select("id,approved_principal,finance_disbursed_at").not("finance_disbursed_at","is",null).gte("finance_disbursed_at",monthStart+"T00:00:00+08:00").lt("finance_disbursed_at",nextMonth+"T00:00:00+08:00"),
         admin.from("repayments").select("amount").gte("payment_date",monthStart).lte("payment_date",today),
         admin.from("company_expenses").select("amount").eq("expense_date",today),
         admin.from("company_expenses").select("amount").gte("expense_date",monthStart).lte("expense_date",today),
       ]);
+      const failed=[loansToday,repayToday,loansMonth,repayMonth,expensesToday,expensesMonth].find(x=>x.error);
+      if(failed?.error) throw new Error(`Daily report query failed: ${failed.error.message}`);
       const sum=(rows:any[]|null,key:string)=>Number((rows||[]).reduce((a,r)=>a+Number(r?.[key]||0),0));
-      const todayDisbursed=sum(loansToday.data,"principal"),todayCollected=sum(repayToday.data,"amount"),todayExpenses=sum(expensesToday.data,"amount");
-      const monthDisbursed=sum(loansMonth.data,"principal"),monthCollected=sum(repayMonth.data,"amount"),monthExpenses=sum(expensesMonth.data,"amount");
+      const todayDisbursed=sum(loansToday.data,"approved_principal"),todayCollected=sum(repayToday.data,"amount"),todayExpenses=sum(expensesToday.data,"amount");
+      const monthDisbursed=sum(loansMonth.data,"approved_principal"),monthCollected=sum(repayMonth.data,"amount"),monthExpenses=sum(expensesMonth.data,"amount");
       const todayProfit=todayCollected-todayDisbursed-todayExpenses;
       const monthProfit=monthCollected-monthDisbursed-monthExpenses;
       const msg=`📊 WL CREDIT 每日營運報告
@@ -127,8 +154,8 @@ ${(loansToday.data||[]).length} 筆｜${money(todayDisbursed)}
 💰 今日收款
 ${(repayToday.data||[]).length} 筆｜${money(todayCollected)}
 
-🆕 新貸款申請
-${appsToday.count||0} 筆
+🆕 今日新增貸款
+${(loansToday.data||[]).length} 筆
 
 🧾 公司支出
 ${money(todayExpenses)}
@@ -139,7 +166,7 @@ ${money(todayProfit)}
 ━━━━━━━━━━━━━━
 📆 本月累計
 
-💸 本月放款：${money(monthDisbursed)}
+💸 本月放款：${(loansMonth.data||[]).length} 筆｜${money(monthDisbursed)}
 💰 本月收款：${money(monthCollected)}
 🧾 本月開銷：${money(monthExpenses)}
 📈 本月盈虧：${money(monthProfit)}
