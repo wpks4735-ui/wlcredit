@@ -22,7 +22,7 @@
  },true);
  document.addEventListener('submit',e=>{
   if(e.target?.id==='v415ExistingLoanForm'){
-   const f=e.target;loanPricingDraft={interest_rate:Number(f.elements.interest_rate?.value||0),processing_fee:Number(f.elements.processing_fee?.value||0),net_disbursement_amount:Number(f.elements.principal?.value||0)};
+   const f=e.target;if(f.elements.due?.value&&f.elements.v24_due_at)f.elements.v24_due_at.value=`${f.elements.due.value}T23:59`;loanPricingDraft={interest_rate:Number(f.elements.interest_rate?.value||0),processing_fee:Number(f.elements.processing_fee?.value||0),net_disbursement_amount:Number(f.elements.principal?.value||0)};
   }
   if(e.target?.id==='v36SubmitFinanceForm'){
    const id=currentApplicationId;
@@ -64,11 +64,17 @@
   interestField?.querySelector('label')&&(interestField.querySelector('label').textContent='利息金额');
   interestField?.insertAdjacentHTML('beforebegin','<div class="field"><label>利息率 (%)</label><input name="interest_rate" type="number" min="0" max="100" step="0.01" required></div>');
   settlement.closest('.field')?.insertAdjacentHTML('afterend','<div class="field"><label>手续费</label><input name="processing_fee" type="number" min="0" step="0.01" value="0" required></div>');
-  principal.readOnly=true;principal.placeholder='自动计算';
+  principal.readOnly=false;principal.placeholder='自动计算，也可以手动修改';
   const rate=f.elements.interest_rate,fee=f.elements.processing_fee;
-  const calculate=source=>{const total=Number(settlement.value||0),r=Number(rate.value||0),charge=Number(fee.value||0);if(source!=='interest')interest.value=(total*r/100).toFixed(2);principal.value=Math.max(total-Number(interest.value||0)-charge,0).toFixed(2)};
-  [settlement,rate,fee].forEach(x=>x.addEventListener('input',()=>calculate('formula')));interest.addEventListener('input',()=>calculate('interest'));
-  const submit=f.querySelector('button[type="submit"],button:not([type])');submit?.addEventListener('click',e=>{calculate('interest');if(Number(principal.value)<=0){e.preventDefault();e.stopImmediatePropagation();window.toast?.('客户到手金额必须大于 0',true)}},true);
+  let manualNet=false;const calculate=source=>{const total=Number(settlement.value||0),r=Number(rate.value||0),charge=Number(fee.value||0);if(source!=='interest')interest.value=(total*r/100).toFixed(2);if(!manualNet)principal.value=Math.max(total-Number(interest.value||0)-charge,0).toFixed(2)};
+  [settlement,rate,fee].forEach(x=>x.addEventListener('input',()=>{manualNet=false;calculate('formula')}));interest.addEventListener('input',()=>{manualNet=false;calculate('interest')});principal.addEventListener('input',()=>{manualNet=true});
+  const submit=f.querySelector('button[type="submit"],button:not([type])');submit?.addEventListener('click',e=>{if(Number(principal.value)<=0){e.preventDefault();e.stopImmediatePropagation();window.toast?.('客户到手金额必须大于 0',true)}},true);
  }
- const pricingObserver=new MutationObserver(enhancePricingForm);pricingObserver.observe(document.documentElement,{childList:true,subtree:true});enhancePricingForm();
+ function removeDuplicateDue(){
+  const f=document.querySelector('#v415ExistingLoanForm'),cycle=f?.querySelector('.v24-cycle-box'),input=cycle?.querySelector('[name="v24_due_at"]');if(!f||!cycle||!input||input.dataset.v25912)return;
+  input.dataset.v25912='1';const field=input.closest('.field');if(field)field.hidden=true;
+  [...cycle.querySelectorAll('p.muted')].forEach(p=>{if(/到账时间|current due|masa matang/i.test(p.textContent||''))p.hidden=true});
+  const sync=()=>{if(f.elements.due?.value)input.value=`${f.elements.due.value}T23:59`};f.elements.due?.addEventListener('change',sync);sync();
+ }
+ const pricingObserver=new MutationObserver(()=>{enhancePricingForm();removeDuplicateDue()});pricingObserver.observe(document.documentElement,{childList:true,subtree:true});enhancePricingForm();removeDuplicateDue();
 })();
