@@ -1,6 +1,7 @@
 /* WL Credit V25.9.8 — reliable Telegram finance-status notifications for /admin */
 (()=>{
  'use strict';
+ const duplicateDueStyle=document.createElement('style');duplicateDueStyle.textContent='#v415ExistingLoanForm .field:has([name="v24_due_at"]){display:none!important}';document.head.appendChild(duplicateDueStyle);
  let currentApplicationId=null;
  let loanPricingDraft=null;
  const notify=async id=>{
@@ -77,4 +78,5 @@
   const sync=()=>{if(f.elements.due?.value)input.value=`${f.elements.due.value}T23:59`};f.elements.due?.addEventListener('change',sync);sync();
  }
  const pricingObserver=new MutationObserver(()=>{enhancePricingForm();removeDuplicateDue()});pricingObserver.observe(document.documentElement,{childList:true,subtree:true});enhancePricingForm();removeDuplicateDue();
+ setInterval(()=>{document.querySelectorAll('#v415ExistingLoanForm [name="v24_due_at"]').forEach(input=>{const field=input.closest('.field');if(field)field.style.setProperty('display','none','important')});removeDuplicateDue()},300);
 })();
