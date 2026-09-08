@@ -39,7 +39,6 @@ async function collect(l){
  }
  const seen=new Set();return all.filter(d=>{if(!d.storage_path)throw Error('附件缺少路径 / Missing attachment path');const k=(d.bucket_name||'customer-documents')+'/'+d.storage_path;if(seen.has(k))return false;seen.add(k);return true});
 }
-function videoURL(d){const u=new URL('admin.html',location.href);u.hash='loan-video='+encodeURIComponent(JSON.stringify({bucket:d.bucket_name||'customer-documents',path:d.storage_path}));return u.href}
 async function imageData(blob){const bitmap=await createImageBitmap(blob);try{const c=document.createElement('canvas'),scale=Math.min(1,1800/Math.max(bitmap.width,bitmap.height));c.width=Math.round(bitmap.width*scale);c.height=Math.round(bitmap.height*scale);c.getContext('2d').drawImage(bitmap,0,0,c.width,c.height);return c.toDataURL('image/png')}finally{bitmap.close()}}
 async function cover(url){return new Promise(resolve=>{const v=document.createElement('video');v.crossOrigin='anonymous';v.muted=true;v.preload='auto';let done=false;const finish=r=>{if(done)return;done=true;clearTimeout(timer);v.removeAttribute('src');v.load();resolve(r)};const timer=setTimeout(()=>finish(null),12000);v.onerror=()=>finish(null);v.onloadeddata=()=>{try{const c=document.createElement('canvas');c.width=640;c.height=Math.max(1,Math.round(640*v.videoHeight/v.videoWidth));c.getContext('2d').drawImage(v,0,0,c.width,c.height);finish(c.toDataURL('image/png'))}catch(_){finish(null)}};v.src=url;v.play().catch(()=>{});})}
 async function build(c,l,docs,progress=()=>{}){
@@ -110,8 +109,11 @@ async function download(id,button){if(busy)return;busy=true;const old=button?.te
 const oldProfile=window.openCustomerProfile;
 window.openCustomerProfile=function(id){const r=oldProfile.apply(this,arguments);const host=document.querySelector('#modalBody');if(host&&!host.querySelector('#loanPdfDownloads')){const loans=(S().loans||[]).filter(l=>String(l.customer_id)===String(id)&&approved(l));if(loans.length){const div=document.createElement('div');div.id='loanPdfDownloads';div.className='card';div.innerHTML='<h3>LOAN PDF / 贷款资料 PDF</h3>'+loans.map(l=>`<p><button class="btn btn-primary" data-loan-pdf="${E(l.id)}">下载 PDF / Download PDF · ${E(l.loan_id||l.id)}</button></p>`).join('');host.prepend(div)}}return r};
 document.addEventListener('click',e=>{const b=e.target.closest('[data-loan-pdf]');if(b){e.preventDefault();download(b.dataset.loanPdf,b)}});
-let viewing=false,viewed='';
-async function openVideo(){const hash=location.hash;if(!hash.startsWith('#loan-video=')||hash===viewed||viewing||!S().staff)return;viewing=true;try{const d=JSON.parse(decodeURIComponent(hash.slice(12)));if(!['customer-documents','loan-applications'].includes(d.bucket)||typeof d.path!=='string'||!d.path)throw Error('Invalid video reference');const r=await query(window.sb.storage.from(d.bucket).createSignedUrl(d.path,3600));if(!r?.signedUrl)throw Error('Video unavailable');window.modal('<h2>VIDEO / 客户视频</h2><p>链接一小时内有效 / Playback link valid for one hour</p><video controls playsinline style="width:100%;max-height:70vh" src="'+E(r.signedUrl)+'"></video>');viewed=hash}catch(e){window.toast('无法观看，请检查账号权限 / Video unavailable: '+e.message,true);viewed=hash}finally{viewing=false}}
-setInterval(openVideo,1500);window.addEventListener('hashchange',()=>{viewed='';openVideo()});
-window.WLLoanPDF={approved,fields,collect,build,videoURL,download};
+// Retired video links must never open a modal or request a signed URL.
+function clearLegacyVideoHash(){
+ if(location.hash.startsWith('#loan-video='))history.replaceState(history.state,'',location.pathname+location.search);
+}
+clearLegacyVideoHash();
+window.addEventListener('hashchange',clearLegacyVideoHash);
+window.WLLoanPDF={approved,fields,collect,build,download};
 })();
