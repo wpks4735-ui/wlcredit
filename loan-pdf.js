@@ -7,7 +7,6 @@ function money(v){if(v===null||v===undefined||txt(v)===''||!Number.isFinite(Numb
 function fields(c,l){
  const b=window.WLCustomerBank.read(c);
  const ec=(n,k)=>c[`emergency_${k}${n===2?'_2':''}`]||c[`emergency_contact_${n}_${k}`]||c[`emergency_${n}_${k}`]||'';
- const due=txt(l.due_date).slice(0,10);if(!/^\d{4}-\d{2}-\d{2}$/.test(due))throw Error('请先填写贷款到期日 / Missing due date');
  return [
  ['CUSTOMER INFORMATION / 客户资料',true],
  ['CUSTOMER ID / 客户编号：'+txt(c.customer_code||c.username||c.id)],
@@ -18,9 +17,8 @@ function fields(c,l){
  ['LOAN SUMMARY / 贷款明细',true,true],['LOAN ID / 贷款编号：'+txt(l.loan_id||l.id)],
  ['NET AMOUNT / 到手金额：'+money(l.principal)],['INTEREST / 每期利息：'+money(l.interest)],['FULL SETTLEMENT / 清账金额：'+money(l.settlement_amount)],
  ['DISBURSEMENT DATE / 放款日期：'+(txt(l.disbursement_date)||'未记录 / Not recorded')],
- ['DUE DATE / 还款到期日：'+due],['STATUS / 状态：'+txt(l.status)],
  ['REPAYMENT TERMS / 还款说明',true],
- ['Payment must be made by 11:59 PM on '+due+' (Malaysia time).'],['须在 '+due+' 当天晚上 11:59 前还款（马来西亚时间）。'],
+ ['Payment must be made by 11:59 PM on the repayment due date (Malaysia time).'],['须在还款到期日当天晚上 11:59 前还款（马来西亚时间）。'],
  ['Late repayment fee: RM 200 per day after the deadline.'],['超过上述还款期限，迟还费用为每天 RM200。'],
  ['Interest and full settlement are separate. Paying interest does not reduce the full settlement amount.'],['利息与清账金额分开计算。支付利息不会抵扣或减少清账金额。'],
  ['The figures above are the recorded loan terms, not a current payoff quotation. Any late fees are separate.'],['以上为贷款记录中的约定金额，不代表当前结清报价；迟还费用另列。']
@@ -52,28 +50,24 @@ async function build(c,l,docs,progress=()=>{}){
  async function flush(){ctx.fillStyle='#627387';ctx.font='9px "Microsoft YaHei",sans-serif';ctx.fillText('PRIVATE / 私人资料  |  '+txt(l.loan_id||l.id).slice(0,45),42,816);const im=await pdf.embedPng(canvas.toDataURL('image/png'));const p=pdf.addPage([W,H]);p.drawImage(im,{x:0,y:0,width:W,height:H});for(const a of links){const ref=pdf.context.register(pdf.context.obj({Type:'Annot',Subtype:'Link',Rect:[42,H-a.y-5,553,H-a.y+18],Border:[0,0,0],A:{Type:'Action',S:'URI',URI:P.PDFString.of(a.url)}}));p.node.addAnnot(ref)}}
  async function line(value,heading=false,newPage=false){if(newPage&&y>123){await flush();page()}ctx.font=(heading?'bold 12':'11')+'px "Microsoft YaHei","Noto Sans CJK SC",sans-serif';const lines=[];let s='';for(const ch of txt(value)){if(ctx.measureText(s+ch).width>487){lines.push(s);s=ch}else s+=ch}lines.push(s);const h=lines.length*18+(heading?20:10);if(y+h>782){await flush();page();ctx.font=(heading?'bold 12':'11')+'px "Microsoft YaHei",sans-serif'}if(heading){ctx.fillStyle='#edf3f9';ctx.fillRect(42,y-14,511,h);y+=4}ctx.fillStyle='#123a66';for(const t of lines){ctx.fillText(t,53,y);y+=18}y+=heading?15:10}
  page();for(const r of rows)await line(...r);
- await line('ATTACHMENT INDEX / 附件目录',true,true);
- await line('Generated / 生成时间：'+new Date().toLocaleString('en-GB',{timeZone:'Asia/Kuala_Lumpur'})+' MYT');
- await line('Attachments are the currently accessible customer uploads. / 附件为生成时可读取的客户上传资料。');
  if(!docs.length)await line('No uploaded files / 暂无上传资料');
- for(let i=0;i<docs.length;i++)await line(`${i+1}. ${docs[i].file_name||docs[i].storage_path.split('/').pop()}`);
  await flush();
  for(let i=0;i<docs.length;i++){
   const d=docs[i],name=d.file_name||d.storage_path.split('/').pop(),bucket=d.bucket_name||'customer-documents';progress(`附件 / Attachment ${i+1} / ${docs.length}: ${name}`);
   try{
-   const video=txt(d.mime_type).startsWith('video/')||/\.(mp4|mov|webm)$/i.test(d.storage_path);
+   const video=txt(d.mime_type).startsWith('video/')||/\.(mp4|mov|webm)$/i.test(d.storage_path)||/\.(mp4|mov|webm)$/i.test(name);
    if(video){
     const signed=await query(window.sb.storage.from(bucket).createSignedUrl(d.storage_path,300));if(!signed?.signedUrl)throw Error('No video access');
     page();await line(`VIDEO ${i+1} / 视频 ${i+1}`,true);await line(name);const thumbnail=await cover(signed.signedUrl);
-    if(thumbnail){const img=await new Promise((ok,no)=>{const im=new Image();im.onload=()=>ok(im);im.onerror=no;im.src=thumbnail});const r=Math.min(470/img.width,340/img.height);ctx.drawImage(img,53,y, img.width*r,img.height*r);y+=img.height*r+30}else await line('Video preview unavailable / 视频无法生成封面');
-    const target=videoURL(d);links.push({y,url:target});await line('WATCH VIDEO / 点击观看视频');await line('Sign in with an authorized staff account. / 需使用有权限的后台账号登录。');await line('This link follows current access permissions. / 链接按当前资料权限开放。');await flush();continue;
+    if(thumbnail){const img=await new Promise((ok,no)=>{const im=new Image();im.onload=()=>ok(im);im.onerror=no;im.src=thumbnail});const r=Math.min(470/img.width,340/img.height);ctx.drawImage(img,53,y, img.width*r,img.height*r);y+=img.height*r+30}else {ctx.fillStyle='#edf3f9';ctx.fillRect(53,y,470,150);ctx.fillStyle='#123a66';ctx.font='bold 30px sans-serif';ctx.fillText('VIDEO',235,y+65);ctx.font='12px "Microsoft YaHei",sans-serif';ctx.fillText('封面暂不可用，请点击下方观看 / Open video below',70,y+108);y+=180;}
+    const target=videoURL(d);ctx.fillStyle='#d9eaff';ctx.fillRect(42,y-18,511,30);links.push({y,url:target});await line('▶ WATCH VIDEO / 点击这里观看视频');await line('Sign in with an authorized staff account. / 需使用有权限的后台账号登录。');await line('This link follows current access permissions. / 链接按当前资料权限开放。');await flush();continue;
    }
    const blob=await query(window.sb.storage.from(bucket).download(d.storage_path));if(!blob)throw Error('Empty file');if(blob.size>80*1024*1024)throw Error('File exceeds 80 MB / 文件超过80MB');
-   const isPDF=txt(d.mime_type)==='application/pdf'||/\.pdf$/i.test(d.storage_path)||blob.type==='application/pdf';
+   const isPDF=txt(d.mime_type)==='application/pdf'||/\.pdf$/i.test(d.storage_path)||/\.pdf$/i.test(name)||blob.type==='application/pdf';
    page();await line(`ATTACHMENT ${i+1} / 附件 ${i+1}`,true);await line(name);
    if(isPDF){await line('Original PDF pages follow / 后附原 PDF 全部页面');await flush();const source=await P.PDFDocument.load(await blob.arrayBuffer());const pages=await pdf.copyPages(source,source.getPageIndices());for(const p of pages)pdf.addPage(p)}
-   else if(txt(d.mime_type||blob.type).startsWith('image/')||/\.(png|jpe?g|webp)$/i.test(d.storage_path)){
-    const data=await imageData(blob),im=await pdf.embedPng(data);await flush();const p=pdf.addPage([W,H]);const r=Math.min(511/im.width,742/im.height);p.drawImage(im,{x:(W-im.width*r)/2,y:(H-im.height*r)/2,width:im.width*r,height:im.height*r});
+   else if(txt(d.mime_type||blob.type).startsWith('image/')||/\.(png|jpe?g|webp)$/i.test(d.storage_path)||/\.(png|jpe?g|webp)$/i.test(name)){
+    const data=await imageData(blob);const im=await new Promise((ok,no)=>{const img=new Image();img.onload=()=>ok(img);img.onerror=()=>no(Error('Image decode failed / 图片无法解码'));img.src=data});const r=Math.min(489/im.width,(775-y)/im.height);ctx.drawImage(im,53,y,im.width*r,im.height*r);await flush();
    }else throw Error('Unsupported file type / 不支持的附件类型');
   }catch(e){throw Error(name+'：'+(e.message||String(e))+'。PDF 未生成，请修复附件后重试 / Export stopped; fix this attachment and retry.')}
  }
