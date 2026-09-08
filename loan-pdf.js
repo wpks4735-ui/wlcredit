@@ -41,7 +41,7 @@ async function collect(l){
 }
 async function imageData(blob){const bitmap=await createImageBitmap(blob);try{const c=document.createElement('canvas'),scale=Math.min(1,1800/Math.max(bitmap.width,bitmap.height));c.width=Math.round(bitmap.width*scale);c.height=Math.round(bitmap.height*scale);c.getContext('2d').drawImage(bitmap,0,0,c.width,c.height);return c.toDataURL('image/png')}finally{bitmap.close()}}
 async function cover(url){return new Promise(resolve=>{const v=document.createElement('video');v.crossOrigin='anonymous';v.muted=true;v.preload='auto';let done=false;const finish=r=>{if(done)return;done=true;clearTimeout(timer);v.removeAttribute('src');v.load();resolve(r)};const timer=setTimeout(()=>finish(null),12000);v.onerror=()=>finish(null);v.onloadeddata=()=>{try{const c=document.createElement('canvas');c.width=640;c.height=Math.max(1,Math.round(640*v.videoHeight/v.videoWidth));c.getContext('2d').drawImage(v,0,0,c.width,c.height);finish(c.toDataURL('image/png'))}catch(_){finish(null)}};v.src=url;v.play().catch(()=>{});})}
-async function build(c,l,docs,progress=()=>{}){
+async function build(c,l,docs,progress=()=>{},getFile=d=>query(window.sb.storage.from(d.bucket_name||'customer-documents').download(d.storage_path))){
  if(!approved(l))throw Error('贷款尚未通过 / Loan is not approved');
  const isVideo=d=>txt(d.mime_type).startsWith('video/')||/\.(mp4|mov|webm)$/i.test(d.storage_path||'')||/\.(mp4|mov|webm)$/i.test(d.file_name||'');
  docs=[...docs.filter(d=>!isVideo(d)),...docs.filter(isVideo)];
@@ -60,7 +60,7 @@ async function build(c,l,docs,progress=()=>{}){
    const video=txt(d.mime_type).startsWith('video/')||/\.(mp4|mov|webm)$/i.test(d.storage_path)||/\.(mp4|mov|webm)$/i.test(name);
    if(video){
     if(photoCount){await flush();photoCount=0;}
-    const blob=await query(window.sb.storage.from(bucket).download(d.storage_path));if(!blob||!blob.size)throw Error('Video file is empty / 视频文件为空');
+    const blob=await getFile(d);if(!blob||!blob.size)throw Error('Video file is empty / 视频文件为空');
     if(blob.size>200*1024*1024||totalVideoBytes+blob.size>350*1024*1024)throw Error('Video files are too large for browser export / 视频超过浏览器导出限制（单个200MB，合计350MB）');
     totalVideoBytes+=blob.size;
     const objectURL=URL.createObjectURL(blob);let thumbnail;try{thumbnail=await cover(objectURL)}finally{URL.revokeObjectURL(objectURL)}
@@ -78,7 +78,7 @@ async function build(c,l,docs,progress=()=>{}){
     await line('If you cannot open this file, please contact me.');
     await flush();continue;
    }
-   const blob=await query(window.sb.storage.from(bucket).download(d.storage_path));if(!blob)throw Error('Empty file');if(blob.size>80*1024*1024)throw Error('File exceeds 80 MB / 文件超过80MB');
+   const blob=await getFile(d);if(!blob)throw Error('Empty file');if(blob.size>80*1024*1024)throw Error('File exceeds 80 MB / 文件超过80MB');
    const isPDF=txt(d.mime_type)==='application/pdf'||/\.pdf$/i.test(d.storage_path)||/\.pdf$/i.test(name)||blob.type==='application/pdf';
    if(isPDF){
     if(photoCount){await flush();photoCount=0;}
@@ -104,10 +104,54 @@ async function build(c,l,docs,progress=()=>{}){
  if(photoCount)await flush();
  pdf.setTitle('WL Credit '+txt(l.loan_id||l.id));pdf.setAuthor('WL Credit');return pdf.save();
 }
+function fileKey(d){return (d.bucket_name||'customer-documents')+'/'+d.storage_path}
+function safeName(v){return txt(v).replace(/[<>:"/\\|?*\x00-\x1f]/g,'_').replace(/[. ]+$/,'').slice(0,150)||'file'}
+async function receipts(l){
+ const matches=await Promise.all([
+  query(window.sb.from('loan_applications').select('*').eq('created_loan_id',l.id)),
+  query(window.sb.from('loan_applications').select('*').eq('loan_id',l.id)),
+  l.application_id?query(window.sb.from('loan_applications').select('*').eq('id',l.application_id)):[]
+ ]);
+ const apps=[...new Map(matches.flat().filter(a=>(!a.customer_id||String(a.customer_id)===String(l.customer_id))&&(!a.existing_customer_id||String(a.existing_customer_id)===String(l.customer_id))).map(a=>[a.id,a])).values()];
+ const rows=await query(window.sb.from('disbursement_receipts').select('*').eq('loan_id',l.id));
+ for(const a of apps){const found=await query(window.sb.from('disbursement_receipts').select('*').eq('application_id',a.id));rows.push(...(found||[]))}
+ const out=[];
+ for(const r of rows){if(r.customer_id&&String(r.customer_id)!==String(l.customer_id))continue;if(r.loan_id&&String(r.loan_id)!==String(l.id))continue;out.push({storage_path:r.storage_path,file_name:r.original_name,mime_type:r.mime_type,bucket_name:'disbursement-proofs'})}
+ for(const r of [l,...apps])if(r.finance_proof_path)out.push({storage_path:r.finance_proof_path,file_name:r.finance_proof_name,bucket_name:'disbursement-proofs'});
+ return {apps,proofs:[...new Map(out.filter(d=>d.storage_path).map(d=>[fileKey(d),d])).values()]};
+}
+function payoutDate(l,apps=[]){
+ const app=[...apps].sort((a,b)=>txt(b.finance_disbursed_at).localeCompare(txt(a.finance_disbursed_at)))[0];
+ const value=l.finance_disbursed_at||l.disbursed_at||app?.finance_disbursed_at||l.disbursement_date;
+ if(!value)return '未记录 / Not recorded';
+ if(/^\d{4}-\d{2}-\d{2}$/.test(value))return value;
+ const d=new Date(value);return Number.isNaN(d.getTime())?txt(value):d.toLocaleString('en-GB',{timeZone:'Asia/Kuala_Lumpur',hour12:false})+' MYT';
+}
+async function bundle(c,l,docs,proofs,apps=[],progress=()=>{}){
+ if(!window.JSZip)throw Error('ZIP组件未加载，请刷新后重试 / ZIP library unavailable');
+ const zip=new window.JSZip(),cached=new Map(),all=[...new Map([...docs,...proofs].map(d=>[fileKey(d),d])).values()];
+ for(let i=0;i<all.length;i++){
+  const d=all[i];progress('正在下载文件 / Downloading '+(i+1)+' / '+all.length);
+  try{const b=await query(window.sb.storage.from(d.bucket_name||'customer-documents').download(d.storage_path));if(!b||!b.size)throw Error('Empty file');cached.set(fileKey(d),b)}catch(e){throw Error((d.file_name||d.storage_path)+'：'+e.message+'；未生成资料包 / Package stopped')}
+ }
+ const loan={...l,disbursement_date:payoutDate(l,apps)};
+ const pdf=await build(c,loan,all,progress,async d=>cached.get(fileKey(d)));
+ zip.file('01-Customer-Loan.pdf',pdf);
+ const rows=fields(c,loan),stop=rows.findIndex(r=>r[0]==='REPAYMENT TERMS / 还款说明');
+ const summary=rows.slice(0,stop<0?rows.length:stop).map(r=>r[1]?'\r\n'+r[0]:r[0]).join('\r\n');
+ zip.file('02-Customer-Details.txt','\ufeff'+summary+'\r\n');
+ const inventory=[];
+ for(const [folder,list] of [['03-Uploaded-Files',docs],['04-Transfer-Proofs',proofs]]){
+  zip.folder(folder);
+  for(let i=0;i<list.length;i++){const d=list[i],name=String(i+1).padStart(3,'0')+'-'+safeName(d.file_name||d.storage_path.split('/').pop());const dest=folder+'/'+name;zip.file(dest,await cached.get(fileKey(d)).arrayBuffer());inventory.push(dest)}
+ }
+ zip.file('00-Contents.txt','\ufeff客户贷款资料包 / Customer loan package\r\n01-Customer-Loan.pdf：客户贷款PDF\r\n02-Customer-Details.txt：可复制客户资料及贷款金额、出账时间\r\n03-Uploaded-Files：全部客户上传原文件\r\n04-Transfer-Proofs：本笔贷款转账凭证\r\n'+(!proofs.length?'\r\n本笔贷款未记录转账截图 / No transfer proof recorded for this loan.\r\n':'')+'\r\n'+inventory.join('\r\n'));
+ progress('正在打包 / Creating ZIP...');return zip.generateAsync({type:'blob',compression:'STORE'});
+}
 let busy=false;
-async function download(id,button){if(busy)return;busy=true;const old=button?.textContent;try{if(button)button.disabled=true;const progress=t=>{if(button)button.textContent=t};progress('正在读取 / Loading...');const l=await query(window.sb.from('loans').select('*').eq('id',id).single());if(!approved(l))throw Error('贷款尚未通过 / Loan is not approved');const c=await query(window.sb.from('customers').select('*').eq('id',l.customer_id).single());const docs=await collect(l);const bytes=await build(c,l,docs,progress);const url=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'}));const a=document.createElement('a');a.href=url;a.download=('WL-Credit-'+txt(c.customer_code||c.id)+'-'+txt(l.loan_id||l.id)).replace(/[^\w.-]/g,'_')+'.pdf';a.click();setTimeout(()=>URL.revokeObjectURL(url),60000);window.toast('PDF 已生成 / PDF downloaded')}catch(e){window.toast(e.message||String(e),true)}finally{busy=false;if(button){button.disabled=false;button.textContent=old}}}
+async function download(id,button){if(busy)return;busy=true;const old=button?.textContent;try{if(button)button.disabled=true;const progress=t=>{if(button)button.textContent=t};progress('正在读取 / Loading...');const l=await query(window.sb.from('loans').select('*').eq('id',id).single());if(!approved(l))throw Error('贷款尚未通过 / Loan is not approved');const c=await query(window.sb.from('customers').select('*').eq('id',l.customer_id).single());const docs=await collect(l),{proofs,apps}=await receipts(l);const blob=await bundle(c,l,docs,proofs,apps,progress);const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=safeName('WL-Credit-'+txt(c.customer_code||c.id)+'-'+txt(l.loan_id||l.id))+'.zip';a.click();setTimeout(()=>URL.revokeObjectURL(url),60000);window.toast('资料包已生成 / ZIP downloaded')}catch(e){window.toast(e.message||String(e),true)}finally{busy=false;if(button){button.disabled=false;button.textContent=old}}}
 const oldProfile=window.openCustomerProfile;
-window.openCustomerProfile=function(id){const r=oldProfile.apply(this,arguments);const host=document.querySelector('#modalBody');if(host&&!host.querySelector('#loanPdfDownloads')){const loans=(S().loans||[]).filter(l=>String(l.customer_id)===String(id)&&approved(l));if(loans.length){const div=document.createElement('div');div.id='loanPdfDownloads';div.className='card';div.innerHTML='<h3>LOAN PDF / 贷款资料 PDF</h3>'+loans.map(l=>`<p><button class="btn btn-primary" data-loan-pdf="${E(l.id)}">下载 PDF / Download PDF · ${E(l.loan_id||l.id)}</button></p>`).join('');host.prepend(div)}}return r};
+window.openCustomerProfile=function(id){const r=oldProfile.apply(this,arguments);const host=document.querySelector('#modalBody');if(host&&!host.querySelector('#loanPdfDownloads')){const loans=(S().loans||[]).filter(l=>String(l.customer_id)===String(id)&&approved(l));if(loans.length){const div=document.createElement('div');div.id='loanPdfDownloads';div.className='card';div.innerHTML='<h3>CUSTOMER FILES / 客户资料包</h3>'+loans.map(l=>`<p><button class="btn btn-primary" data-loan-pdf="${E(l.id)}">下载资料包 / Download ZIP · ${E(l.loan_id||l.id)}</button></p>`).join('');host.prepend(div)}}return r};
 document.addEventListener('click',e=>{const b=e.target.closest('[data-loan-pdf]');if(b){e.preventDefault();download(b.dataset.loanPdf,b)}});
 // Retired video links must never open a modal or request a signed URL.
 function clearLegacyVideoHash(){
@@ -115,5 +159,5 @@ function clearLegacyVideoHash(){
 }
 clearLegacyVideoHash();
 window.addEventListener('hashchange',clearLegacyVideoHash);
-window.WLLoanPDF={approved,fields,collect,build,download};
+window.WLLoanPDF={approved,fields,collect,build,receipts,payoutDate,bundle,download};
 })();
