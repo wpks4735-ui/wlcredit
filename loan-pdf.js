@@ -44,10 +44,13 @@ async function imageData(blob){const bitmap=await createImageBitmap(blob);try{co
 async function cover(url){return new Promise(resolve=>{const v=document.createElement('video');v.crossOrigin='anonymous';v.muted=true;v.preload='auto';let done=false;const finish=r=>{if(done)return;done=true;clearTimeout(timer);v.removeAttribute('src');v.load();resolve(r)};const timer=setTimeout(()=>finish(null),12000);v.onerror=()=>finish(null);v.onloadeddata=()=>{try{const c=document.createElement('canvas');c.width=640;c.height=Math.max(1,Math.round(640*v.videoHeight/v.videoWidth));c.getContext('2d').drawImage(v,0,0,c.width,c.height);finish(c.toDataURL('image/png'))}catch(_){finish(null)}};v.src=url;v.play().catch(()=>{});})}
 async function build(c,l,docs,progress=()=>{}){
  if(!approved(l))throw Error('贷款尚未通过 / Loan is not approved');
+ const isVideo=d=>txt(d.mime_type).startsWith('video/')||/\.(mp4|mov|webm)$/i.test(d.storage_path||'')||/\.(mp4|mov|webm)$/i.test(d.file_name||'');
+ docs=[...docs.filter(d=>!isVideo(d)),...docs.filter(isVideo)];
+ let totalVideoBytes=0,photoCount=0;
  const rows=fields(c,l),P=window.PDFLib,pdf=await P.PDFDocument.create();
  const W=595,H=842,scale=2;let canvas,ctx,y,links=[];
  function page(){canvas=document.createElement('canvas');canvas.width=W*scale;canvas.height=H*scale;ctx=canvas.getContext('2d');ctx.scale(scale,scale);ctx.fillStyle='white';ctx.fillRect(0,0,W,H);ctx.fillStyle='#123a66';ctx.fillRect(0,0,W,95);ctx.fillStyle='white';ctx.font='bold 22px "Microsoft YaHei",sans-serif';ctx.fillText('WL CREDIT',42,43);ctx.font='12px "Microsoft YaHei",sans-serif';ctx.fillText('LOAN DOSSIER / 客户贷款资料',42,72);y=123;links=[]}
- async function flush(){ctx.fillStyle='#627387';ctx.font='9px "Microsoft YaHei",sans-serif';ctx.fillText('PRIVATE / 私人资料  |  '+txt(l.loan_id||l.id).slice(0,45),42,816);const im=await pdf.embedPng(canvas.toDataURL('image/png'));const p=pdf.addPage([W,H]);p.drawImage(im,{x:0,y:0,width:W,height:H});for(const a of links){const ref=pdf.context.register(pdf.context.obj({Type:'Annot',Subtype:'Link',Rect:[42,H-a.y-5,553,H-a.y+18],Border:[0,0,0],A:{Type:'Action',S:'URI',URI:P.PDFString.of(a.url)}}));p.node.addAnnot(ref)}}
+ async function flush(){ctx.fillStyle='#627387';ctx.font='9px "Microsoft YaHei",sans-serif';ctx.fillText('PRIVATE / 私人资料  |  '+txt(l.loan_id||l.id).slice(0,45),42,816);const im=await pdf.embedPng(canvas.toDataURL('image/png'));const p=pdf.addPage([W,H]);p.drawImage(im,{x:0,y:0,width:W,height:H});for(const a of links){const ref=pdf.context.register(pdf.context.obj({Type:'Annot',Subtype:'FileAttachment',Rect:[519,H-a.y-5,542,H-a.y+18],FS:a.fileRef,Name:'Paperclip',Contents:P.PDFHexString.fromText(a.name),T:P.PDFHexString.fromText('Video / 视频附件'),F:4}));p.node.addAnnot(ref)}}
  async function line(value,heading=false,newPage=false){if(newPage&&y>123){await flush();page()}ctx.font=(heading?'bold 12':'11')+'px "Microsoft YaHei","Noto Sans CJK SC",sans-serif';const lines=[];let s='';for(const ch of txt(value)){if(ctx.measureText(s+ch).width>487){lines.push(s);s=ch}else s+=ch}lines.push(s);const h=lines.length*18+(heading?20:10);if(y+h>782){await flush();page();ctx.font=(heading?'bold 12':'11')+'px "Microsoft YaHei",sans-serif'}if(heading){ctx.fillStyle='#edf3f9';ctx.fillRect(42,y-14,511,h);y+=4}ctx.fillStyle='#123a66';for(const t of lines){ctx.fillText(t,53,y);y+=18}y+=heading?15:10}
  page();for(const r of rows)await line(...r);
  if(!docs.length)await line('No uploaded files / 暂无上传资料');
@@ -57,20 +60,39 @@ async function build(c,l,docs,progress=()=>{}){
   try{
    const video=txt(d.mime_type).startsWith('video/')||/\.(mp4|mov|webm)$/i.test(d.storage_path)||/\.(mp4|mov|webm)$/i.test(name);
    if(video){
-    const signed=await query(window.sb.storage.from(bucket).createSignedUrl(d.storage_path,300));if(!signed?.signedUrl)throw Error('No video access');
-    page();await line(`VIDEO ${i+1} / 视频 ${i+1}`,true);await line(name);const thumbnail=await cover(signed.signedUrl);
-    if(thumbnail){const img=await new Promise((ok,no)=>{const im=new Image();im.onload=()=>ok(im);im.onerror=no;im.src=thumbnail});const r=Math.min(470/img.width,340/img.height);ctx.drawImage(img,53,y, img.width*r,img.height*r);y+=img.height*r+30}else {ctx.fillStyle='#edf3f9';ctx.fillRect(53,y,470,150);ctx.fillStyle='#123a66';ctx.font='bold 30px sans-serif';ctx.fillText('VIDEO',235,y+65);ctx.font='12px "Microsoft YaHei",sans-serif';ctx.fillText('封面暂不可用，请点击下方观看 / Open video below',70,y+108);y+=180;}
-    const target=videoURL(d);ctx.fillStyle='#d9eaff';ctx.fillRect(42,y-18,511,30);links.push({y,url:target});await line('▶ WATCH VIDEO / 点击这里观看视频');await line('Sign in with an authorized staff account. / 需使用有权限的后台账号登录。');await line('This link follows current access permissions. / 链接按当前资料权限开放。');await flush();continue;
+    if(photoCount){await flush();photoCount=0;}
+    const blob=await query(window.sb.storage.from(bucket).download(d.storage_path));if(!blob||!blob.size)throw Error('Video file is empty / 视频文件为空');
+    if(blob.size>200*1024*1024||totalVideoBytes+blob.size>350*1024*1024)throw Error('Video files are too large for browser export / 视频超过浏览器导出限制（单个200MB，合计350MB）');
+    totalVideoBytes+=blob.size;
+    const objectURL=URL.createObjectURL(blob);let thumbnail;try{thumbnail=await cover(objectURL)}finally{URL.revokeObjectURL(objectURL)}
+    const ext=/\.(mp4|mov|webm)$/i.exec(name)?.[1]?.toLowerCase()||/\.(mp4|mov|webm)$/i.exec(d.storage_path)?.[1]?.toLowerCase()||(txt(d.mime_type||blob.type).includes('webm')?'webm':txt(d.mime_type||blob.type).includes('quicktime')?'mov':'mp4');
+    const attachmentName='video-'+(i+1)+'.'+ext;
+    await pdf.attach(await blob.arrayBuffer(),attachmentName,{mimeType:ext==='mov'?'video/quicktime':'video/'+ext,description:name});
+    await pdf.flush();
+    const fileNames=pdf.catalog.lookup(P.PDFName.of('Names'),P.PDFDict).lookup(P.PDFName.of('EmbeddedFiles'),P.PDFDict).lookup(P.PDFName.of('Names'),P.PDFArray);
+    const fileRef=fileNames.get(fileNames.size()-1);
+    page();await line('VIDEO ATTACHMENT / 内嵌视频附件',true);await line(name);
+    if(thumbnail){const img=await new Promise((ok,no)=>{const im=new Image();im.onload=()=>ok(im);im.onerror=no;im.src=thumbnail});const r=Math.min(470/img.width,290/img.height);ctx.drawImage(img,53,y,img.width*r,img.height*r);y+=img.height*r+30}
+    else {ctx.fillStyle='#edf3f9';ctx.fillRect(53,y,470,100);ctx.fillStyle='#123a66';ctx.font='bold 26px sans-serif';ctx.fillText('VIDEO ATTACHED',155,y+60);y+=130;}
+    ctx.fillStyle='#d9eaff';ctx.fillRect(42,y-18,511,30);links.push({y,fileRef,name:attachmentName});await line('       OPEN VIDEO ATTACHMENT / 打开视频附件');
+    await line('ATTACHED FILE / 内嵌文件：'+attachmentName);
+    await line('The original video is inside this PDF. No login, internet link or expiry is required.');
+    await line('视频原文件已包含在本 PDF 内，无需登录、网络链接或有效期。');
+    await line('Use the paperclip icon or the PDF reader attachment panel to save the video, then play it.');
+    await line('请点击回形针图标，或在阅读器的附件面板保存视频后播放。');
+    await line('Some mobile and chat-app PDF viewers cannot open embedded files. Use a reader that supports PDF attachments.');
+    await line('部分手机及聊天软件的 PDF 预览不支持附件，请使用支持 PDF 附件的阅读器。');
+    await flush();continue;
    }
    const blob=await query(window.sb.storage.from(bucket).download(d.storage_path));if(!blob)throw Error('Empty file');if(blob.size>80*1024*1024)throw Error('File exceeds 80 MB / 文件超过80MB');
    const isPDF=txt(d.mime_type)==='application/pdf'||/\.pdf$/i.test(d.storage_path)||/\.pdf$/i.test(name)||blob.type==='application/pdf';
-   page();await line(`ATTACHMENT ${i+1} / 附件 ${i+1}`,true);await line(name);
-   if(isPDF){await line('Original PDF pages follow / 后附原 PDF 全部页面');await flush();const source=await P.PDFDocument.load(await blob.arrayBuffer());const pages=await pdf.copyPages(source,source.getPageIndices());for(const p of pages)pdf.addPage(p)}
+   if(isPDF){if(photoCount){await flush();photoCount=0;}page();await line(`ATTACHMENT ${i+1} / 附件 ${i+1}`,true);await line(name);await line('Original PDF pages follow / 后附原 PDF 全部页面');await flush();const source=await P.PDFDocument.load(await blob.arrayBuffer());const pages=await pdf.copyPages(source,source.getPageIndices());for(const p of pages)pdf.addPage(p)}
    else if(txt(d.mime_type||blob.type).startsWith('image/')||/\.(png|jpe?g|webp)$/i.test(d.storage_path)||/\.(png|jpe?g|webp)$/i.test(name)){
-    const data=await imageData(blob);const im=await new Promise((ok,no)=>{const img=new Image();img.onload=()=>ok(img);img.onerror=()=>no(Error('Image decode failed / 图片无法解码'));img.src=data});const r=Math.min(489/im.width,(775-y)/im.height);ctx.drawImage(im,53,y,im.width*r,im.height*r);await flush();
+    if(!photoCount){page();await line('PHOTOS / 客户照片',true);}const data=await imageData(blob);const im=await new Promise((ok,no)=>{const img=new Image();img.onload=()=>ok(img);img.onerror=()=>no(Error('Image decode failed / 图片无法解码'));img.src=data});const x=53+(photoCount%2)*251,top=165+Math.floor(photoCount/2)*307,r=Math.min(232/im.width,266/im.height);ctx.drawImage(im,x+(232-im.width*r)/2,top,im.width*r,im.height*r);ctx.fillStyle='#123a66';ctx.font='10px "Microsoft YaHei",sans-serif';let label=(i+1)+'. '+name;while(ctx.measureText(label).width>226)label=label.slice(0,-2)+'…';ctx.fillText(label,x,top+286);photoCount++;if(photoCount===4){await flush();photoCount=0;}
    }else throw Error('Unsupported file type / 不支持的附件类型');
   }catch(e){throw Error(name+'：'+(e.message||String(e))+'。PDF 未生成，请修复附件后重试 / Export stopped; fix this attachment and retry.')}
  }
+ if(photoCount)await flush();
  pdf.setTitle('WL Credit '+txt(l.loan_id||l.id));pdf.setAuthor('WL Credit');return pdf.save();
 }
 let busy=false;
