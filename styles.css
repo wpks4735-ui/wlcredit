@@ -683,3 +683,18 @@ body.sidebar-collapsed #adminSidebar>*{visibility:hidden!important}
 #modal.customer-profile .btn{padding:8px 11px}
 #modal.customer-profile #loanPdfDownloads{margin-bottom:12px}
 @media(max-width:600px){#modal.customer-profile #modalBody{padding:12px}#modal.customer-profile .customer-info-card .kv{grid-template-columns:78px minmax(0,1fr);gap:8px}#modal.customer-profile .report-stats{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}#modal.customer-profile .stat strong{font-size:17px;overflow-wrap:anywhere}#modal.customer-profile .stat{padding:9px}#modal.customer-profile .profile-head{gap:8px}}
+
+/* Smaller customer typography and compact header actions. */
+#modal.customer-profile #modalBody{font-size:12px;line-height:1.4}
+#modal.customer-profile h2{font-size:16px}
+#modal.customer-profile h3{font-size:13px}
+#modal.customer-profile .customer-info-card .kv span,#modal.customer-profile .customer-info-card .kv strong{font-size:12px}
+#modal.customer-profile .customer-info-card .kv{padding:5px 0}
+#modal.customer-profile .stat strong{font-size:18px}
+#modal.customer-profile .btn,#modal.customer-profile .table td,#modal.customer-profile .table th{font-size:11px}
+#modal.customer-profile .customer-actions{display:flex;flex-wrap:wrap;gap:6px;align-items:flex-start;flex-shrink:0}
+#modal.customer-profile .customer-download{position:relative}
+#modal.customer-profile .customer-download-menu{position:absolute;top:100%;right:0;min-width:180px;max-height:220px;overflow:auto;padding:8px;background:white;border:1px solid #dbe3ee;border-radius:8px;z-index:10;box-shadow:0 4px 16px #0002}
+#modal.customer-profile .customer-download-menu[hidden]{display:none}
+#modal.customer-profile .customer-download-menu button{display:block;width:100%;margin:3px 0;text-align:left}
+@media(max-width:600px){#modal.customer-profile .stat strong{font-size:15px}}

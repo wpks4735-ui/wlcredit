@@ -151,7 +151,25 @@ async function bundle(c,l,docs,proofs,apps=[],progress=()=>{}){
 let busy=false;
 async function download(id,button){if(busy)return;busy=true;const old=button?.textContent;try{if(button)button.disabled=true;const progress=t=>{if(button)button.textContent=t};progress('正在读取 / Loading...');const l=await query(window.sb.from('loans').select('*').eq('id',id).single());if(!approved(l))throw Error('贷款尚未通过 / Loan is not approved');const c=await query(window.sb.from('customers').select('*').eq('id',l.customer_id).single());const docs=await collect(l),{proofs,apps}=await receipts(l);const blob=await bundle(c,l,docs,proofs,apps,progress);const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=safeName('WL-Credit-'+txt(c.customer_code||c.id)+'-'+txt(l.loan_id||l.id))+'.zip';a.click();setTimeout(()=>URL.revokeObjectURL(url),60000);window.toast('资料包已生成 / ZIP downloaded')}catch(e){window.toast(e.message||String(e),true)}finally{busy=false;if(button){button.disabled=false;button.textContent=old}}}
 const oldProfile=window.openCustomerProfile;
-window.openCustomerProfile=function(id){const r=oldProfile.apply(this,arguments);const host=document.querySelector('#modalBody');if(host&&!host.querySelector('#loanPdfDownloads')){const loans=(S().loans||[]).filter(l=>String(l.customer_id)===String(id)&&approved(l));if(loans.length){const div=document.createElement('div');div.id='loanPdfDownloads';div.className='card';div.innerHTML='<h3>CUSTOMER FILES / 客户资料包</h3>'+loans.map(l=>`<p><button class="btn btn-primary" data-loan-pdf="${E(l.id)}">下载资料包 / Download ZIP · ${E(l.loan_id||l.id)}</button></p>`).join('');host.prepend(div)}}return r};
+window.openCustomerProfile=function(id){
+ const r=oldProfile.apply(this,arguments),head=document.querySelector('#modalBody [data-customer-profile]'),actions=head?.lastElementChild;
+ if(actions&&!actions.querySelector('.customer-download')){
+  actions.classList.add('customer-actions');
+  const loans=(S().loans||[]).filter(l=>String(l.customer_id)===String(id)&&approved(l));
+  const wrap=document.createElement('div');wrap.className='customer-download';
+  const button=document.createElement('button');button.type='button';button.className='btn btn-primary';button.textContent='下载';button.disabled=!loans.length;
+  if(!loans.length)button.title='暂无已通过的贷款';
+  if(loans.length===1)button.dataset.loanPdf=loans[0].id;
+  if(loans.length>1){
+   const menu=document.createElement('div');menu.className='customer-download-menu';menu.hidden=true;
+   menu.innerHTML=loans.map(l=>`<button type="button" class="btn btn-secondary" data-loan-pdf="${E(l.id)}">${E(l.loan_id||l.id)}</button>`).join('');
+   button.setAttribute('aria-expanded','false');button.onclick=()=>{menu.hidden=!menu.hidden;button.setAttribute('aria-expanded',String(!menu.hidden))};
+   menu.addEventListener('click',()=>{menu.hidden=true;button.setAttribute('aria-expanded','false')});wrap.append(button,menu);
+  }else wrap.append(button);
+  actions.prepend(wrap);
+ }
+ return r;
+};
 document.addEventListener('click',e=>{const b=e.target.closest('[data-loan-pdf]');if(b){e.preventDefault();download(b.dataset.loanPdf,b)}});
 // Retired video links must never open a modal or request a signed URL.
 function clearLegacyVideoHash(){
