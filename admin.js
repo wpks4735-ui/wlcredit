@@ -122,7 +122,7 @@ function auditEntity(a){return a.entity_type||a.table_name||a.entity||'-'}
 function auditDetail(a){const v=a.details||a.metadata||a.new_values||a.changes||a.description||'';return typeof v==='string'?v:JSON.stringify(v)}
 
 function toast(msg,error=false){const e=$('#toast');e.textContent=msg;e.className='toast show'+(error?' error':'');setTimeout(()=>e.className='toast',3000)}
-function modal(html){$('#modalBody').innerHTML=html;$('#modal').classList.toggle('customer-profile',!!$('#modalBody [data-customer-profile]'));$('#modal').classList.add('show');const card=$('#modal .modal-card');if(card)card.scrollTop=0;if($('#modal').classList.contains('customer-profile'))$('#customerModalClose')?.focus()}
+function modal(html){$('#modalBody').innerHTML=html;$('#modal').classList.toggle('customer-profile',!!$('#modalBody [data-customer-profile]'));$('#modal').classList.toggle('loan-detail',!!$('#modalBody [data-loan-detail]'));$('#customerModalClose')?.setAttribute('aria-label','关闭 / Close');$('#modal').classList.add('show');const card=$('#modal .modal-card');if(card)card.scrollTop=0;if($('#modal').matches('.customer-profile,.loan-detail'))$('#customerModalClose')?.focus()}
 window.closeModal=()=>$('#modal').classList.remove('show');
 function normalizedRole(v){return String(v||'').trim().toLowerCase().replace(/[\s-]+/g,'_')}
 function isSuperAdmin(){return ['super_admin','superadmin'].includes(normalizedRole(state.staff?.role))}
@@ -513,14 +513,17 @@ window.changePin=id=>{if(!requirePerm('customers_edit'))return;modal(`<h2>${tr('
 window.openLoan=(id,customerId)=>{
  if(!requirePerm(id?'loans_edit':'loans_create'))return;
  const l=state.loans.find(x=>String(x.id)===String(id))||{};
+ if(id&&!l.id)return toast(tr('noAccess'),true);
  const selectedCustomerId=String(l.customer_id||customerId||'');
+ const fixedCustomer=state.customers.find(c=>String(c.id)===selectedCustomerId)||l.customers||{};
  const activeCustomers=(state.customers||[]).filter(c=>c.is_active!==false);
  const customerOptions=activeCustomers.map(c=>`<option value="${esc(c.id)}" ${selectedCustomerId===String(c.id)?'selected':''}>${esc(customerUsername(c))} — ${esc(c.full_name||'-')} — ${esc(c.phone||'')}</option>`).join('');
  const title=tr(id?'editLoan':'addLoan');
  const customerSearchLabel=SWK_LANG.current==='zh'?'搜索客户（账号／姓名／电话／IC）':SWK_LANG.current==='ms'?'Cari pelanggan (akaun / nama / telefon / IC)':'Search customer (account / name / phone / IC)';
- modal(`<h2>${title}</h2><form id="loanForm"><div class="grid2"><div class="field loan-customer-field"><label>${tr('customer')}</label><input id="loanCustomerSearch" type="search" placeholder="${esc(customerSearchLabel)}" autocomplete="off"><select id="loanCustomerSelect" name="customer" required size="${id?1:Math.min(Math.max(activeCustomers.length,3),8)}">${customerOptions}</select><small id="loanCustomerHint" class="muted"></small></div><div class="field"><label>${tr('principalDisbursed')}</label><input name="principal" type="number" step=".01" required value="${l.principal??''}"></div><div class="field"><label>${tr('interestPerPeriod')}</label><input name="interest" type="number" step=".01" required value="${l.interest??''}"></div><div class="field"><label>${tr('settlementIndependent')}</label><input name="settlement" type="number" step=".01" required value="${l.settlement_amount??''}"></div><div class="field"><label>${tr('disbursementDate')}</label><input name="disb" type="date" required value="${l.disbursement_date||isoToday()}"></div><div class="field"><label>${tr('dueDate')}</label><input name="due" type="date" required value="${l.due_date||''}"></div><div class="field"><label>${SWK_LANG.current==='zh'?'预计到账时间':SWK_LANG.current==='ms'?'Masa Bayaran Dijangka':'Expected Payment Time'}</label><input name="expected_at" type="datetime-local" value="${l.expected_payment_at?String(l.expected_payment_at).slice(0,16):''}"></div></div><div class="field"><label>${tr('notes')}</label><textarea name="notes">${esc(l.notes)}</textarea></div><button class="btn btn-primary">${tr('save')}</button></form>`);
+ modal(`<h2 ${id?'data-loan-detail':''}>${title}</h2><form id="loanForm"><div class="grid2">${id?`<div class="field loan-fixed-customer"><label>${tr('customer')}</label><strong>${esc(customerUsername(fixedCustomer))} · ${esc(fixedCustomer.full_name||'-')}</strong></div>`:`<div class="field loan-customer-field"><label>${tr('customer')}</label><input id="loanCustomerSearch" type="search" placeholder="${esc(customerSearchLabel)}" autocomplete="off"><select id="loanCustomerSelect" name="customer" required size="${id?1:Math.min(Math.max(activeCustomers.length,3),8)}">${customerOptions}</select><small id="loanCustomerHint" class="muted"></small></div>`}<div class="field"><label>${tr('principalDisbursed')}</label><input name="principal" type="number" step=".01" required value="${l.principal??''}"></div><div class="field"><label>${SWK_LANG.current==='zh'?'利息':tr('interestPerPeriod')}</label><input name="interest" type="number" step=".01" required value="${l.interest??''}"></div><div class="field"><label>${SWK_LANG.current==='zh'?'清账金额':tr('settlementIndependent')}</label><input name="settlement" type="number" step=".01" required value="${l.settlement_amount??''}"></div><div class="field"><label>${tr('disbursementDate')}</label><input name="disb" type="date" required value="${l.disbursement_date||isoToday()}"></div><div class="field"><label>${tr('dueDate')}</label><input name="due" type="date" required value="${l.due_date||''}"></div><div class="field"><label>${SWK_LANG.current==='zh'?'预计到账时间':SWK_LANG.current==='ms'?'Masa Bayaran Dijangka':'Expected Payment Time'}</label><input name="expected_at" type="datetime-local" value="${l.expected_payment_at?String(l.expected_payment_at).slice(0,16):''}"></div></div><div class="field"><label>${tr('notes')}</label><textarea name="notes">${esc(l.notes)}</textarea></div><button class="btn btn-primary">${tr('save')}</button></form>`);
  const form=$('#loanForm'), search=$('#loanCustomerSearch'), select=$('#loanCustomerSelect'), hint=$('#loanCustomerHint');
  const renderCustomerOptions=()=>{
+   if(!select)return;
    const q=String(search?.value||'').trim().toLowerCase();
    const list=activeCustomers.filter(c=>{
      const hay=[customerUsername(c),c.full_name,c.phone,c.id_number].map(v=>String(v||'').toLowerCase()).join(' ');
@@ -535,7 +538,7 @@ window.openLoan=(id,customerId)=>{
  renderCustomerOptions();
  form.onsubmit=async e=>{
    e.preventDefault();
-   const f=new FormData(e.target), customer=f.get('customer');
+   const f=new FormData(e.target), customer=id?l.customer_id:f.get('customer');
    if(!customer)return toast(SWK_LANG.current==='zh'?'请选择客户':SWK_LANG.current==='ms'?'Sila pilih pelanggan':'Please select a customer',true);
    const p=Number(f.get('principal')),i=Number(f.get('interest')),s=Number(f.get('settlement'));
    let x;
@@ -878,7 +881,7 @@ document.addEventListener('DOMContentLoaded',async()=>{
   setHandler('#auditSearch','oninput',renderAuditLogs);
   setHandler('#globalSearch','oninput',renderGlobalSearch);
   document.addEventListener('click',e=>{if(!e.target.closest('.global-search-wrap'))$('#globalSearchResults')?.classList.add('hidden')});
-  setHandler('#modal','onclick',e=>{if(e.target.id==='modal'&&!e.currentTarget.classList.contains('customer-profile'))closeModal()});
+  setHandler('#modal','onclick',e=>{if(e.target.id==='modal'&&!e.currentTarget.matches('.customer-profile,.loan-detail'))closeModal()});
   setHandler('#notificationBell','onclick',openNotificationCenter);
   setHandler('#pendingPaymentCard','onclick',()=>{});
   setHandler('#nav','onclick',e=>{

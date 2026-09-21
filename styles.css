@@ -698,3 +698,17 @@ body.sidebar-collapsed #adminSidebar>*{visibility:hidden!important}
 #modal.customer-profile .customer-download-menu[hidden]{display:none}
 #modal.customer-profile .customer-download-menu button{display:block;width:100%;margin:3px 0;text-align:left}
 @media(max-width:600px){#modal.customer-profile .stat strong{font-size:15px}}
+
+/* Compact loan editor: fixed customer and one field per row. */
+#modal.loan-detail .modal-card{padding:0!important}
+#modal.loan-detail .customer-modal-bar{display:flex;justify-content:flex-end;position:sticky;top:0;z-index:20;background:#fff;border-bottom:1px solid #e4eaf1;padding:6px 10px}
+#modal.loan-detail #modalBody{padding:14px 20px 20px;font-size:12px;line-height:1.5}
+#modal.loan-detail h2{font-size:16px;margin:0 0 14px}
+#modal.loan-detail h3{font-size:13px}
+#modal.loan-detail .grid2{display:grid;grid-template-columns:minmax(0,1fr);gap:0}
+#modal.loan-detail .field{display:grid;grid-template-columns:130px minmax(0,1fr);gap:12px;align-items:center;margin:0;padding:8px 0;border-bottom:1px solid #e4eaf1}
+#modal.loan-detail .field label{font-size:12px;margin:0}
+#modal.loan-detail .field input,#modal.loan-detail .field select,#modal.loan-detail .field textarea{font-size:12px;min-width:0;width:100%;padding:7px 9px;box-sizing:border-box}
+#modal.loan-detail .field strong{font-size:12px;overflow-wrap:anywhere}
+#modal.loan-detail .btn{font-size:12px;margin-top:12px}
+@media(max-width:600px){#modal.loan-detail #modalBody{padding:12px}#modal.loan-detail .field{grid-template-columns:95px minmax(0,1fr);gap:8px}}
