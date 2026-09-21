@@ -122,7 +122,7 @@ function auditEntity(a){return a.entity_type||a.table_name||a.entity||'-'}
 function auditDetail(a){const v=a.details||a.metadata||a.new_values||a.changes||a.description||'';return typeof v==='string'?v:JSON.stringify(v)}
 
 function toast(msg,error=false){const e=$('#toast');e.textContent=msg;e.className='toast show'+(error?' error':'');setTimeout(()=>e.className='toast',3000)}
-function modal(html){$('#modalBody').innerHTML=html;$('#modal').classList.add('show')}
+function modal(html){$('#modalBody').innerHTML=html;$('#modal').classList.toggle('customer-profile',!!$('#modalBody [data-customer-profile]'));$('#modal').classList.add('show');const card=$('#modal .modal-card');if(card)card.scrollTop=0;if($('#modal').classList.contains('customer-profile'))$('#customerModalClose')?.focus()}
 window.closeModal=()=>$('#modal').classList.remove('show');
 function normalizedRole(v){return String(v||'').trim().toLowerCase().replace(/[\s-]+/g,'_')}
 function isSuperAdmin(){return ['super_admin','superadmin'].includes(normalizedRole(state.staff?.role))}
@@ -878,7 +878,7 @@ document.addEventListener('DOMContentLoaded',async()=>{
   setHandler('#auditSearch','oninput',renderAuditLogs);
   setHandler('#globalSearch','oninput',renderGlobalSearch);
   document.addEventListener('click',e=>{if(!e.target.closest('.global-search-wrap'))$('#globalSearchResults')?.classList.add('hidden')});
-  setHandler('#modal','onclick',e=>{if(e.target.id==='modal')closeModal()});
+  setHandler('#modal','onclick',e=>{if(e.target.id==='modal'&&!e.currentTarget.classList.contains('customer-profile'))closeModal()});
   setHandler('#notificationBell','onclick',openNotificationCenter);
   setHandler('#pendingPaymentCard','onclick',()=>{});
   setHandler('#nav','onclick',e=>{
