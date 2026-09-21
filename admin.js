@@ -122,7 +122,7 @@ function auditEntity(a){return a.entity_type||a.table_name||a.entity||'-'}
 function auditDetail(a){const v=a.details||a.metadata||a.new_values||a.changes||a.description||'';return typeof v==='string'?v:JSON.stringify(v)}
 
 function toast(msg,error=false){const e=$('#toast');e.textContent=msg;e.className='toast show'+(error?' error':'');setTimeout(()=>e.className='toast',3000)}
-function modal(html){$('#modalBody').innerHTML=html;$('#modal').classList.toggle('customer-profile',!!$('#modalBody [data-customer-profile]'));$('#modal').classList.toggle('loan-detail',!!$('#modalBody [data-loan-detail]'));$('#customerModalClose')?.setAttribute('aria-label','关闭 / Close');$('#modal').classList.add('show');const card=$('#modal .modal-card');if(card)card.scrollTop=0;if($('#modal').matches('.customer-profile,.loan-detail'))$('#customerModalClose')?.focus()}
+function modal(html){$('#modalBody').innerHTML=html;$('#modal').classList.toggle('customer-profile',!!$('#modalBody [data-customer-profile]'));$('#modal').classList.toggle('loan-detail',!!$('#modalBody [data-loan-detail],#modalBody [data-staff-detail]'));$('#customerModalClose')?.setAttribute('aria-label','关闭 / Close');$('#modal').classList.add('show');const card=$('#modal .modal-card');if(card)card.scrollTop=0;if($('#modal').matches('.customer-profile,.loan-detail'))$('#customerModalClose')?.focus()}
 window.closeModal=()=>$('#modal').classList.remove('show');
 function normalizedRole(v){return String(v||'').trim().toLowerCase().replace(/[\s-]+/g,'_')}
 function isSuperAdmin(){return ['super_admin','superadmin'].includes(normalizedRole(state.staff?.role))}
@@ -1559,6 +1559,7 @@ function v311RenderFinance(){
  document.querySelector('#reportInterest')&&(document.querySelector('#reportInterest').textContent=money(m.interest));
  document.querySelector('#v311OverdueCollected')&&(document.querySelector('#v311OverdueCollected').textContent=money(m.overdue));
  document.querySelector('#reportCollected')&&(document.querySelector('#reportCollected').textContent=money(m.profit));
+ if(window.WLStaffReport){window.WLStaffReport.render();return;}
  const rows=document.querySelector('#v311StaffProfitRows');if(!rows)return;
  const staff=management?(state.staffList||[]).filter(s=>normalizedRole(s.role)==='customer_service'):[state.staff];
  const safeStaff=(staff||[]).filter(Boolean);

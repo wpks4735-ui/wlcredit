@@ -568,6 +568,7 @@ window.addEventListener('DOMContentLoaded',()=>{q('#refreshBackups')?.addEventLi
   const isMgr=management(), own=isMgr?'':staffId(state.staff), m=metrics(own);
   const set=(id,val)=>{const e=q('#'+id);if(e)e.textContent=val};
   set('reportPrincipal',money(m.disbursed));set('v321PrincipalCollected',money(m.principalCollected));set('reportInterest',money(m.interest));set('v311OverdueCollected',money(m.overdue));set('reportCollected',money(m.profit));
+ if(window.WLStaffReport){window.WLStaffReport.render();return;}
   const rows=q('#v311StaffProfitRows');
   if(rows){
    const source=isMgr?(state.staffList||[]).filter(s=>normalize(s?.role)==='customer_service'):[state.staff].filter(Boolean);
@@ -1043,15 +1044,7 @@ function renderStats(){
   ];
   h.innerHTML=cards.map(([label,val,currency],i)=>`<div class="stat"><span>${label}</span><strong class="${i===6&&val<0?'danger-text':i===6&&val>0?'success-text':''}">${currency?fmt(val):val}</strong></div>`).join('');
 }
-function renderStaffTable(){
-  const body=$('#v311StaffProfitRows');if(!body)return;
-  const list=(isSA()||isFinance())?(window.state?.staffList||[]).filter(s=>String(s.role)==='customer_service'):[window.state?.staff].filter(Boolean);
-  body.innerHTML=list.map(s=>{const id=String(s.user_id||s.auth_user_id||s.id||'');const m=metrics(id);return `<tr><td>${String(s.full_name||s.username||'-')}</td><td>${m.periodCustomers}</td><td>${fmt(m.disbursed)}</td><td>${fmt(m.principal)}</td><td>${fmt(m.interest)}</td><td>${fmt(m.overdue)}</td><td>${fmt(m.received)}</td><td class="${m.profit<0?'danger-text':m.profit>0?'success-text':''}">${fmt(m.profit)}</td></tr>`}).join('')||`<tr><td colspan="8" class="muted">${T('暂无记录','No records','Tiada rekod')}</td></tr>`;
-  const labels=[T('客服','Staff','Staf'),T('客户数','Customers','Pelanggan'),T('共放款','Disbursed','Dikeluarkan'),T('已收本金','Principal','Pokok'),T('已收利息','Interest','Faedah'),T('已收逾期','Overdue','Tertunggak'),T('已收总额','Total Received','Jumlah Diterima'),T('盈亏','Profit / Loss','Untung / Rugi')];
-  ['v333StaffCol','v333CustomersCol','v333DisbursedCol','v333PrincipalCol','v333InterestCol','v333OverdueCol','v333ReceivedCol','v333ProfitCol'].forEach((id,i)=>{const e=$('#'+id);if(e)e.textContent=labels[i]});
-  const title=$('#v311StaffProfitTitle');if(title)title.textContent=T('客服盈亏报表','Staff Profit / Loss Report','Laporan Untung / Rugi Staf');
-  const help=$('#v311StaffProfitHelp');if(help)help.textContent=T('全部数据根据上方日期范围计算。客服只看自己，财务和 Super Admin 查看全部客服。','All figures follow the selected date range. Customer service sees only their own data; Finance and Super Admin see all staff.','Semua angka mengikut julat tarikh. Khidmat pelanggan hanya melihat data sendiri; Kewangan dan Super Admin melihat semua staf.');
-}
+function renderStaffTable(){if(window.WLStaffReport)return window.WLStaffReport.render();}
 function renderAll(){ensureLayout();renderNotifications();renderStats();renderStaffTable()}
 const old=window.renderStats;
 window.renderStats=function(){try{old?.apply(this,arguments)}catch(e){console.warn(e)}setTimeout(renderAll,0)};
@@ -2801,3 +2794,43 @@ setTimeout(()=>{window.renderLoanReview?.();renderFinanceApplications();renderPe
 })();
 
 ;
+
+/* Monthly staff performance and commission. */
+(()=>{
+ const $=s=>document.querySelector(s), st=()=>window.state||{}, esc=v=>window.esc(String(v??''));
+ const role=()=>String(st().staff?.role||'').toLowerCase(), admin=()=>['super_admin','superadmin'].includes(role()), manager=()=>admin()||role()==='finance';
+ const uid=s=>String(s?.user_id||s?.auth_user_id||s?.id||''), money=v=>'RM '+Number(v||0).toLocaleString('en-MY',{minimumFractionDigits:2,maximumFractionDigits:2});
+ const monthNow=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Kuala_Lumpur',year:'numeric',month:'2-digit'}).format(new Date()).slice(0,7);
+ const monthOf=v=>{if(!v)return '';if(String(v).length<=10)return String(v).slice(0,7);return new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Kuala_Lumpur',year:'numeric',month:'2-digit'}).format(new Date(v)).slice(0,7)};
+ let month=monthNow(),current=null,request=0;
+ const staffList=()=>manager()?(st().staffList||[]).filter(s=>s.role==='customer_service'):[st().staff].filter(Boolean);
+ function metrics(id,m){
+ const customers=(st().customers||[]).filter(c=>String(c.owner_staff_id||c.claimed_by||c.assigned_staff_id||'')===id),ids=new Set(customers.map(c=>String(c.id)));
+ const loans=(st().loans||[]).filter(l=>ids.has(String(l.customer_id))),lids=new Set(loans.map(l=>String(l.id)));
+ const disbursed=loans.filter(l=>!['rejected','cancelled','pending','pending_disbursement'].includes(l.status)&&monthOf(l.finance_disbursed_at||l.disbursed_at||l.disbursement_date)===m).reduce((a,l)=>a+Number(l.principal||0),0);
+ const repayments=(st().repayments||[]).filter(r=>lids.has(String(r.loan_id))&&monthOf(r.payment_date||r.created_at)===m&&(!r.status||['approved','confirmed','completed','posted','paid'].includes(r.status)));
+ let interest=0,overdue=0,settlement=0,total=0;
+ for(const r of repayments){const i=Number(r.interest_amount??r.interest_paid??r.interest_component??0),o=Number(r.overdue_amount??r.overdue_paid_amount??r.overdue_component??0),s=Number(r.principal_amount??r.principal_paid??r.principal_component??0);interest+=i;overdue+=o;settlement+=s;total+=Number(r.amount??(i+o+s))}
+ return {customers:customers.length,active:loans.filter(l=>['active','overdue'].includes(String(l.status).toLowerCase())).length,disbursed,interest,overdue,settlement,total,unclassified:Math.round((total-interest-overdue-settlement)*100)/100,profit:total-disbursed};
+ }
+ function render(){const card=$('#v311StaffProfitCard'),body=$('#v311StaffProfitRows');if(!card||!body||!st().staff)return;
+ let filter=$('#staffReportMonth');if(!filter){filter=document.createElement('input');filter.type='month';filter.id='staffReportMonth';filter.setAttribute('aria-label','业绩月份');filter.value=month;card.querySelector('.section-head').append(filter);filter.onchange=()=>{if(/^\d{4}-\d{2}$/.test(filter.value)){month=filter.value;render()}}}
+ card.querySelector('thead tr').innerHTML=['客服','客户数量','进行中的贷款','共放款','共收款','盈亏'].map(v=>'<th>'+v+'</th>').join('');
+ body.innerHTML=staffList().map(s=>{const m=metrics(uid(s),month);return `<tr><td><button class="staff-report-name" data-staff-report="${esc(uid(s))}">${esc(s.full_name||s.username)}</button></td><td>${m.customers}</td><td>${m.active}</td><td>${money(m.disbursed)}</td><td>${money(m.total)}</td><td>${money(m.profit)}</td></tr>`}).join('')||'<tr><td colspan="6">暂无记录</td></tr>';
+ const help=$('#v311StaffProfitHelp');if(help)help.textContent=`统计月份：${month}；客户数及进行中贷款为当前数量。`;
+ }
+ function rows(d){const m=d.metrics;return [['共放款 / Disbursed',money(m.disbursed)],['利息收款 / Interest',money(m.interest)],['逾期收款 / Late fees',money(m.overdue)],['清账收款 / Settlement',money(m.settlement)],...(m.unclassified?[['未分类收款 / Unclassified',money(m.unclassified)]]:[]),['共收款 / Total received',money(m.total)],['进行中的贷款 / Active loans',String(m.active)],['盈亏 / Profit & loss',money(m.profit)],['分成比例 / Commission rate',d.rate===null?'未设置 / Not set':d.rate+'%'],['分成金额 / Commission',d.rate===null?'—':money(Math.round(m.interest*d.rate)/100)]]}
+ async function open(id){const s=staffList().find(x=>uid(x)===id);if(!s)return;const token=++request;current={id,name:s.full_name||s.username||'-',month,metrics:metrics(id,month),rate:null};
+ window.modal(`<div data-staff-detail><h2>客服业绩明细</h2><strong>${esc(current.name)}</strong><p>${month}</p><div id="staffReportDetails">正在读取分成设置…</div></div>`);
+ try{const r=await window.sb.from('staff_monthly_commissions').select('rate').eq('staff_user_id',id).eq('report_month',month+'-01').maybeSingle();if(token!==request||!$('#staffReportDetails'))return;if(r.error)throw r.error;current.rate=r.data?Number(r.data.rate):null;details()}catch(e){if(token===request&&$('#staffReportDetails'))$('#staffReportDetails').textContent='无法读取分成设置，请先执行随包提供的 SQL 后重试。'}
+ }
+ function details(){const d=current;if(!d||!$('#staffReportDetails'))return;$('#staffReportDetails').innerHTML=rows(d).map(([k,v])=>`<div class="kv"><span>${k}</span><strong>${v}</strong></div>`).join('')+`<p class="muted">分成按利息收款计算；当前贷款数量截至查看时。分成金额不代表已发放。</p>`+(admin()?'<form id="staffRateForm"><label>分成比例（%） <input id="staffRate" type="number" min="0" max="100" step="0.01" required value="'+(d.rate??'')+'"></label><button class="btn btn-secondary">保存比例</button></form>':'')+'<button id="staffReportDownload" class="btn btn-primary">下载 PDF</button>';
+ $('#staffRateForm')?.addEventListener('submit',async e=>{e.preventDefault();if(!admin())return;const rate=Number($('#staffRate').value);if(!Number.isFinite(rate)||rate<0||rate>100)return;const b=e.submitter;b.disabled=true;try{const r=await window.sb.from('staff_monthly_commissions').upsert({staff_user_id:d.id,report_month:d.month+'-01',rate},{onConflict:'staff_user_id,report_month'});if(r.error)throw r.error;d.rate=rate;if(current===d)details()}catch(e){window.toast('保存失败：'+e.message,true)}finally{b.disabled=false}});
+ $('#staffReportDownload').onclick=async()=>{const b=$('#staffReportDownload');b.disabled=true;try{const bytes=await pdf(d),url=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'})),a=document.createElement('a');a.href=url;a.download=`WL-Credit-${d.name.replace(/[\\/:*?"<>|]/g,'_')}-${d.month}.pdf`;a.click();setTimeout(()=>URL.revokeObjectURL(url),60000)}catch(e){window.toast('PDF 下载失败：'+e.message,true)}finally{b.disabled=false}};
+ }
+ async function pdf(d){await document.fonts.ready;const c=document.createElement('canvas');c.width=1240;c.height=1754;const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.fillStyle='#103b6d';x.fillRect(0,0,1240,245);const text=(v,px,py,size=25,color='#17324f')=>{x.fillStyle=color;x.font=`${size}px "Microsoft YaHei",Arial,sans-serif`;x.fillText(v,px,py)};text('WL CREDIT',76,91,46,'#fff');text('客服月度业绩报告 / MONTHLY PERFORMANCE',76,160,28,'#fff');text(d.month,76,208,24,'#d7e8fa');let size=32;while(size>14){x.font=`${size}px "Microsoft YaHei",Arial,sans-serif`;if(x.measureText(d.name).width<1080)break;size--}text(d.name,76,320,size);text('利息收款分成 / Interest-based commission',76,365,23,'#66788b');let y=430;for(const [label,value] of rows(d)){const special=label.startsWith('分成金额');x.fillStyle=special?'#e4f4ee':'#f3f6fa';x.fillRect(76,y-35,1088,82);text(label,98,y+14,24);x.font='bold 27px "Microsoft YaHei",Arial,sans-serif';x.fillStyle=special?'#14734a':'#17324f';x.textAlign='right';x.fillText(value,1140,y+14);x.textAlign='left';y+=91}text('分成 = 利息收款 × 分成比例 / Interest received × commission rate',76,y+42,22);text('当前贷款数量截至查看时；分成金额不代表已发放。',76,y+88,22,'#66788b');text('Active loans are current. Commission shown does not mean paid.',76,y+122,21,'#66788b');const doc=await PDFLib.PDFDocument.create(),img=await doc.embedPng(c.toDataURL('image/png'));doc.addPage([595.28,841.89]).drawImage(img,{x:0,y:0,width:595.28,height:841.89});doc.setTitle('WL Credit '+d.month+' '+d.name);return doc.save()}
+ document.addEventListener('click',e=>{const b=e.target.closest('[data-staff-report]');if(b)open(b.dataset.staffReport)});
+ window.WLStaffReport={render,metrics,pdf};
+ document.addEventListener('wl:data-loaded',render);window.addEventListener('swk-language-applied',()=>setTimeout(render,100));
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(render,700));else render();
+})();
