@@ -94,6 +94,7 @@
     const legacy=document.createElement('div');legacy.id='v51LegacyDashboard';legacy.hidden=true;
     while(dash.firstChild)legacy.appendChild(dash.firstChild);
     dash.appendChild(legacy);
+    const backup=legacy.querySelector("#overviewBackupCenter");if(backup)dash.appendChild(backup);
     $('#v41RoleOverview')?.remove();$('#v39RoleOverview')?.remove();
     dash.insertAdjacentHTML('afterbegin',`<div id="v51Dashboard">
       <section class="v51-panel">
@@ -153,7 +154,7 @@
         </div>
       </div>
     </div>`);
-    updateLanguageMenu();
+    window.updateLanguageMenu?.();
   }
   function initSidebarToggle(){
     const app=document.getElementById('adminApp');
@@ -224,7 +225,7 @@
     $('#v51ChangePassword').onclick=()=>{$('#v51ProfileMenu')?.classList.add('hidden');openPasswordChange()};
     $('#v51Logout').onclick=()=>{$('#staffLogout')?.click()};
     document.addEventListener('click',()=>{$('#v51SoundMenu')?.classList.add('hidden');$('#v51ProfileMenu')?.classList.add('hidden')});
-    $('#v51Lang').onchange=e=>{const old=$('.lang-select');if(old){old.value=e.target.value;old.dispatchEvent(new Event('change',{bubbles:true}))}else{localStorage.setItem('wl_lang',e.target.value);location.reload()}};
+    if($('#v51Lang'))$('#v51Lang').onchange=e=>{const old=$('.lang-select');if(old){old.value=e.target.value;old.dispatchEvent(new Event('change',{bubbles:true}))}else{localStorage.setItem('wl_lang',e.target.value);location.reload()}};
     document.addEventListener('wl:data-loaded',renderAll);
     setInterval(()=>{if($('#dashboard')?.classList.contains('active'))renderAll()},10000);
   }
@@ -306,6 +307,7 @@
   }
   let lastRows=[];
   function renderStaff(){
+    if(window.WLStaffReport){window.WLStaffReport.render();return;}
     const [a,b]=getRange('staff'),s=S(),customers=s.customers||[],loans=s.loans||[],reps=s.repayments||[],staff=(s.staffList||[]).filter(x=>['customer_service','super_admin'].includes(lower(x.role)));
     const visible=role()==='customer_service'?staff.filter(x=>String(x.user_id||x.id)===uid()):staff.filter(x=>lower(x.role)==='customer_service');
     lastRows=visible.map(st=>{

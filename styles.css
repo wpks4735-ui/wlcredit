@@ -721,3 +721,4 @@ body.sidebar-collapsed #adminSidebar>*{visibility:hidden!important}
 }
 
 .staff-report-name{background:none;border:0;color:#125791;font:inherit;font-weight:700;cursor:pointer;text-align:left}#staffReportMonth{width:160px;font-size:13px}#staffRateForm{display:flex;align-items:center;gap:12px;margin-top:15px}#staffRate{width:90px}#staffReportDetails .kv{font-size:13px}
+#v51StaffFilter[hidden],.v51-downloads[hidden]{display:none!important}
