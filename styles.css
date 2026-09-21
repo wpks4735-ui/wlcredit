@@ -712,3 +712,10 @@ body.sidebar-collapsed #adminSidebar>*{visibility:hidden!important}
 #modal.loan-detail .field strong{font-size:12px;overflow-wrap:anywhere}
 #modal.loan-detail .btn{font-size:12px;margin-top:12px}
 @media(max-width:600px){#modal.loan-detail #modalBody{padding:12px}#modal.loan-detail .field{grid-template-columns:95px minmax(0,1fr);gap:8px}}
+
+/* Desktop navigation stays in the viewport while the content scrolls. */
+@media(min-width:901px){
+ #adminApp>#adminSidebar.sidebar{position:fixed!important;inset:0 auto 0 0!important;height:100vh!important;height:100dvh!important;max-height:100vh!important;max-height:100dvh!important;overscroll-behavior-y:contain;box-sizing:border-box}
+ #adminApp>.main{margin-left:270px!important;width:calc(100% - 270px)!important;box-sizing:border-box}
+ body.sidebar-collapsed #adminApp>.main{margin-left:0!important;width:100%!important}
+}
