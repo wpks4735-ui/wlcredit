@@ -22,9 +22,9 @@ const canonicalLoanId=(v:unknown)=>{
   return n?`L${String(Number(n)).padStart(5,"0")}`:(raw||"-");
 };
 
-async function sendTelegram(token:string,chatId:string,message:string){
+async function sendTelegram(token:string,chatId:string,message:string,reviewUrl?:string){
   if(!token||!chatId) throw new Error("Telegram Bot Token or Chat ID is missing.");
-  const r=await fetch(`https://api.telegram.org/bot${token}/sendMessage`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({chat_id:chatId,text:message,disable_web_page_preview:true})});
+  const r=await fetch(`https://api.telegram.org/bot${token}/sendMessage`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({chat_id:chatId,text:message,disable_web_page_preview:true,...(reviewUrl?{reply_markup:{inline_keyboard:[[{text:"进入网页审核收款",url:reviewUrl}]]}}:{})})});
   const data=await r.json();
   if(!r.ok||!data?.ok) throw new Error(data?.description||"Telegram send failed");
   return data;
@@ -98,7 +98,15 @@ Deno.serve(async(req)=>{
       const customer=customerRow?.full_name||"-";
       const staffName=(owner as any)?.full_name||(owner as any)?.username||"Unassigned";
       const msg=`💳 Customer Submitted Payment\n\nUsername: ${displayUsername}\nLoan ID: ${displayLoan}\nCustomer: ${customer}\nAssigned Staff: ${staffName}\nAmount: ${money(amount)}`;
-      await sendTelegram(settings.bot_token,settings.notification_chat_id,msg);
+      const reviewUrl=new URL('/admin.html',Deno.env.get('ADMIN_SITE_URL')||'https://wlcredit.pages.dev');
+      reviewUrl.searchParams.set('review','financeReceipts');
+      if(loanId)reviewUrl.searchParams.set('loan',loanId);
+      const receiptPath=text(body.receipt_path);
+      if(receiptPath){
+        const {data:submission}=await admin.from('payment_submissions').select('id').eq('loan_id',loanId).eq('receipt_path',receiptPath).maybeSingle();
+        if(submission)reviewUrl.searchParams.set('submission',submission.id);
+      }
+      await sendTelegram(settings.bot_token,settings.notification_chat_id,msg,reviewUrl.toString());
       return reply({ok:true});
     }
 

@@ -2835,3 +2835,20 @@ setTimeout(()=>{window.renderLoanReview?.();renderFinanceApplications();renderPe
  document.addEventListener('wl:data-loaded',render);window.addEventListener('swk-language-applied',()=>setTimeout(render,100));
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(render,700));else render();
 })();
+/* Telegram review links remain in the URL until an authorized staff session is ready. */
+(()=>{
+ const params=new URLSearchParams(location.search);if(params.get('review')!=='financeReceipts')return;
+ let done=false;
+ function route(){if(done||!window.state?.staff)return;const role=String(state.staff.role||'').toLowerCase();
+ if(!['finance','super_admin','superadmin'].includes(role)){done=true;window.toast?.('此链接需要财务或 Super Admin 账号登录。',true);return}
+ const section=document.getElementById('financeReceipts');if(!section||typeof window.switchSection!=='function')return;
+ done=true;window.switchSection('financeReceipts');document.querySelector('#nav [data-section="financeReceipts"]')?.click();
+ const id=params.get('submission'),loan=params.get('loan');
+ const notice=document.createElement('p');notice.className='card';notice.id='telegramReviewNotice';notice.textContent='已进入财务审核收款，请核对收据及实际到账后审核。';section.prepend(notice);
+ const matches=(state.submissions||[]).filter(x=>id?String(x.id)===id:loan&&String(x.loan_id)===loan);
+ const row=matches.length===1?matches[0]:null;
+ if(row){const buttons=[...section.querySelectorAll('button[onclick]')];const button=buttons.find(b=>(b.getAttribute('onclick')||'').includes("'"+row.id+"'"));if(button){const tr=button.closest('tr');tr.style.background='#fff3ca';tr.scrollIntoView({block:'center'});notice.textContent='已标出这笔还款，点击“查看”核对后审核。'}else notice.textContent='已进入财务审核收款。这笔还款可能已处理，请查看付款历史。'}
+ else if(id)notice.textContent='已进入财务审核收款。未找到这笔待审核记录，请检查付款历史或刷新。';
+ }
+ document.addEventListener('wl:data-loaded',()=>setTimeout(route,300));window.addEventListener('pageshow',()=>setTimeout(route,500));const timer=setInterval(()=>{route();if(done)clearInterval(timer)},800);
+})();
